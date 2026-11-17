@@ -1,0 +1,10 @@
+*.backup.*
+*.log
+*.qslog
+*~
+.cache/
+build/
+.DS_Store
+__pycache__/
+*.pyc
+markdown.md

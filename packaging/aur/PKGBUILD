@@ -1,0 +1,90 @@
+# Maintainer: David <david@localhost>
+pkgname=chromashell-git
+pkgver=0.3.1.r0.g0000000
+pkgrel=1
+pkgdesc="Fluid morphing desktop environment for Hyprland built with Quickshell and Liquid Glass shaders"
+arch=('any')
+url="https://github.com/Davidgaming1358/ChromaShell"
+license=('MIT')
+depends=(
+    'hyprland'
+    'quickshell'
+    'hyprpaper'
+    'wl-clipboard'
+    'cliphist'
+    'playerctl'
+    'wireplumber'
+    'pipewire-pulse'
+    'ffmpeg'
+    'networkmanager'
+    'bluez-utils'
+    'grim'
+    'slurp'
+    'jq'
+    'python'
+    'libnotify'
+    'adwaita-fonts'
+    'ttf-jetbrains-mono-nerd'
+)
+makedepends=(
+    'git'
+    'qt6-shadertools'
+)
+optdepends=(
+    'brightnessctl: laptop hardware backlight key support'
+    'kitty: default terminal emulator'
+    'firefox: default web browser'
+    'thunar: default file manager'
+    'btop: default system monitor'
+    'vscodium-bin: default code editor (AUR)'
+    'discord: default communication client'
+    'spotify: default music player (AUR)'
+)
+provides=('chromashell')
+conflicts=('chromashell')
+install='chromashell.install'
+source=("${pkgname}::git+${url}.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "${srcdir}/${pkgname}"
+    if git describe --long --tags >/dev/null 2>&1; then
+        git describe --long --tags | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+    else
+        printf "0.3.1.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+    fi
+}
+
+build() {
+    cd "${srcdir}/${pkgname}"
+    if [ -x /usr/lib/qt6/bin/qsb ]; then
+        for frag in config/quickshell/components/liquid_glass.frag \
+                    config/quickshell/components/weather_sky.frag \
+                    config/quickshell/components/cc/bottom_wave.frag; do
+            /usr/lib/qt6/bin/qsb --qt6 -o "${frag}.qsb" "$frag"
+        done
+    fi
+}
+
+package() {
+    cd "${srcdir}/${pkgname}"
+
+    install -dm755 "${pkgdir}/usr/share/chromashell"
+    cp -a assets config install.sh uninstall.sh "${pkgdir}/usr/share/chromashell/"
+
+    install -dm755 "${pkgdir}/usr/bin"
+    cat <<'EOF' > "${pkgdir}/usr/bin/chromashell-setup"
+#!/usr/bin/env bash
+exec /usr/share/chromashell/install.sh --copy "$@"
+EOF
+    chmod 755 "${pkgdir}/usr/bin/chromashell-setup"
+
+    cat <<'EOF' > "${pkgdir}/usr/bin/chromashell-uninstall"
+#!/usr/bin/env bash
+exec /usr/share/chromashell/uninstall.sh "$@"
+EOF
+    chmod 755 "${pkgdir}/usr/bin/chromashell-uninstall"
+
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+}

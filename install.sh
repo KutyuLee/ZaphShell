@@ -1,0 +1,382 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# ChromaShell: Automated Installer
+# Setup script for Arch, Fedora, Debian/Ubuntu & Hyprland desktops
+# ==============================================================================
+
+set -euo pipefail
+
+BOLD="\033[1m"
+GREEN="\033[0;32m"
+BLUE="\033[0;34m"
+YELLOW="\033[1;33m"
+RED="\033[0;31m"
+RESET="\033[0m"
+
+log_info() { echo -e "${BLUE}[i]${RESET} ${BOLD}$1${RESET}"; }
+log_success() { echo -e "${GREEN}[+]${RESET} ${BOLD}$1${RESET}"; }
+log_warn() { echo -e "${YELLOW}[!]${RESET} ${BOLD}$1${RESET}"; }
+log_error() { echo -e "${RED}[x]${RESET} ${BOLD}$1${RESET}"; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TARGET_DIR="${HOME}/.config/quickshell"
+HYPR_DIR="${HOME}/.config/hypr"
+PICTURES_DIR="${HOME}/Pictures"
+MODE=""
+AUTO_YES=false
+
+# Parse command line flags
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --copy)
+            MODE="copy"
+            shift
+            ;;
+        --symlink)
+            MODE="symlink"
+            shift
+            ;;
+        -y|--yes)
+            AUTO_YES=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $(basename "$0") [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --symlink    Symlink ~/.config/quickshell to the repo (default for writable checkouts)"
+            echo "  --copy       Copy files into ~/.config/quickshell (default for read-only / system installs)"
+            echo "  -y, --yes    Skip interactive confirmation prompts"
+            echo "  -h, --help   Show this help message"
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [ -z "$MODE" ]; then
+    if [ -w "${SCRIPT_DIR}/config/quickshell" ]; then
+        MODE="symlink"
+    else
+        MODE="copy"
+    fi
+fi
+
+echo -e "${BOLD}====================================================${RESET}"
+echo -e "${BOLD}           ChromaShell Installer (v0.3.1)           ${RESET}"
+echo -e "${BOLD}====================================================${RESET}\n"
+
+# ------------------------------------------------------------------------------
+# 1. Dependency Checks & Suggestions
+# ------------------------------------------------------------------------------
+log_info "Checking system dependencies..."
+
+DEPENDENCIES=(
+    "quickshell"
+    "hyprctl"
+    "hyprpaper"
+    "wl-copy"
+    "wl-paste"
+    "cliphist"
+    "playerctl"
+    "brightnessctl"
+    "wpctl"
+    "parec"
+    "ffmpeg"
+    "nmcli"
+    "bluetoothctl"
+    "grim"
+    "slurp"
+    "jq"
+    "python3"
+    "notify-send"
+)
+
+MISSING_DEPS=()
+for dep in "${DEPENDENCIES[@]}"; do
+    if ! command -v "$dep" >/dev/null 2>&1; then
+        MISSING_DEPS+=("$dep")
+    fi
+done
+
+if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
+    log_warn "Missing recommended dependencies: ${MISSING_DEPS[*]}"
+    if command -v pacman >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}Install with pacman:${RESET}"
+        echo "  sudo pacman -S --needed hyprland quickshell hyprpaper wl-clipboard cliphist playerctl brightnessctl wireplumber pipewire-pulse ffmpeg networkmanager bluez-utils grim slurp jq python libnotify adwaita-fonts ttf-jetbrains-mono-nerd"
+    elif command -v dnf >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}Install with dnf:${RESET}"
+        echo "  sudo dnf install -y hyprland hyprpaper wl-clipboard cliphist playerctl brightnessctl wireplumber pipewire-utils ffmpeg NetworkManager bluez grim slurp jq python3 libnotify adwaita-fonts-all jetbrains-mono-fonts-all"
+    elif command -v apt >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}Install with apt:${RESET}"
+        echo "  sudo apt install -y hyprland wl-clipboard playerctl brightnessctl wireplumber pulseaudio-utils ffmpeg network-manager bluez grim slurp jq python3 libnotify-bin"
+    fi
+    echo ""
+    if [ "$AUTO_YES" = false ]; then
+        read -rp "Continue installation anyway? [y/N]: " confirm_cont
+        if [[ ! "$confirm_cont" =~ ^[Yy]$ ]]; then
+            log_error "Installation cancelled."
+            exit 1
+        fi
+    fi
+else
+    log_success "All core runtime dependencies found!"
+fi
+
+# ------------------------------------------------------------------------------
+# 2. Optional Default Shell Applications
+# ------------------------------------------------------------------------------
+if [ "$AUTO_YES" = false ]; then
+    echo ""
+    log_info "Default shell applications:"
+    APP_KEYS=(   "kitty"    "firefox"  "thunar"       "btop"           "vscodium"    "discord"       "spotify")
+    APP_BINS=(   "kitty"    "firefox"  "thunar"       "btop"           "codium"      "discord"       "spotify")
+    APP_ROLES=(  "Terminal" "Browser"  "File Manager" "System Monitor" "Code Editor" "Communication" "Music Player")
+
+    ANY_APP_MISSING=false
+    for i in "${!APP_KEYS[@]}"; do
+        status_label="${GREEN}installed${RESET}"
+        if ! command -v "${APP_BINS[$i]}" >/dev/null 2>&1; then
+            status_label="${YELLOW}not installed${RESET}"
+            ANY_APP_MISSING=true
+        fi
+        printf "  %d) %-10s (%-14s) [%b]\n" "$((i + 1))" "${APP_KEYS[$i]}" "${APP_ROLES[$i]}" "$status_label"
+    done
+    echo ""
+
+    if [ "$ANY_APP_MISSING" = true ]; then
+        read -rp "Do you want to install any of these default apps? [y/N]: " install_apps_yn
+        if [[ "$install_apps_yn" =~ ^[Yy]$ ]]; then
+            read -rp "Enter numbers to install (e.g. 1 3 5), 'all', or 'none' [all]: " app_choice
+            app_choice="${app_choice:-all}"
+
+            SELECTED_APPS=()
+            if [[ "${app_choice,,}" == "all" ]]; then
+                SELECTED_APPS=("${APP_KEYS[@]}")
+            elif [[ "${app_choice,,}" != "none" ]]; then
+                cleaned="${app_choice//,/ }"
+                for token in $cleaned; do
+                    if [[ "$token" =~ ^[1-7]$ ]]; then
+                        SELECTED_APPS+=("${APP_KEYS[$((token - 1))]}")
+                    else
+                        log_warn "Ignoring unrecognized selection: $token"
+                    fi
+                done
+            fi
+
+            if [ ${#SELECTED_APPS[@]} -gt 0 ]; then
+                REPO_PKGS=()
+                AUR_PKGS=()
+                MANUAL_PKGS=()
+
+                if command -v pacman >/dev/null 2>&1; then
+                    for app in "${SELECTED_APPS[@]}"; do
+                        case "$app" in
+                            kitty|firefox|thunar|btop|discord) REPO_PKGS+=("$app") ;;
+                            vscodium) AUR_PKGS+=("vscodium-bin") ;;
+                            spotify) AUR_PKGS+=("spotify") ;;
+                        esac
+                    done
+
+                    if [ ${#REPO_PKGS[@]} -gt 0 ]; then
+                        log_info "Installing official repository apps: ${REPO_PKGS[*]}"
+                        sudo pacman -S --needed "${REPO_PKGS[@]}"
+                    fi
+
+                    if [ ${#AUR_PKGS[@]} -gt 0 ]; then
+                        AUR_HELPER=""
+                        if command -v yay >/dev/null 2>&1; then
+                            AUR_HELPER="yay"
+                        elif command -v paru >/dev/null 2>&1; then
+                            AUR_HELPER="paru"
+                        fi
+
+                        if [ -n "$AUR_HELPER" ]; then
+                            log_info "Installing AUR apps via ${AUR_HELPER}: ${AUR_PKGS[*]}"
+                            "$AUR_HELPER" -S --needed "${AUR_PKGS[@]}"
+                        else
+                            log_warn "No AUR helper (yay/paru) found for: ${AUR_PKGS[*]}"
+                            echo "  Install them manually from the AUR, e.g.: yay -S ${AUR_PKGS[*]}"
+                        fi
+                    fi
+                elif command -v dnf >/dev/null 2>&1; then
+                    for app in "${SELECTED_APPS[@]}"; do
+                        case "$app" in
+                            kitty|firefox|thunar|btop) REPO_PKGS+=("$app") ;;
+                            *) MANUAL_PKGS+=("$app") ;;
+                        esac
+                    done
+                    [ ${#REPO_PKGS[@]} -gt 0 ] && sudo dnf install -y "${REPO_PKGS[@]}"
+                    [ ${#MANUAL_PKGS[@]} -gt 0 ] && log_warn "Install separately via Flatpak/third-party repo: ${MANUAL_PKGS[*]}"
+                elif command -v apt >/dev/null 2>&1; then
+                    for app in "${SELECTED_APPS[@]}"; do
+                        case "$app" in
+                            kitty|firefox|thunar|btop) REPO_PKGS+=("$app") ;;
+                            *) MANUAL_PKGS+=("$app") ;;
+                        esac
+                    done
+                    [ ${#REPO_PKGS[@]} -gt 0 ] && sudo apt install -y "${REPO_PKGS[@]}"
+                    [ ${#MANUAL_PKGS[@]} -gt 0 ] && log_warn "Install separately via Flatpak/vendor repo: ${MANUAL_PKGS[*]}"
+                else
+                    log_warn "Unsupported package manager; please install manually: ${SELECTED_APPS[*]}"
+                fi
+            fi
+        fi
+    else
+        log_success "All default shell apps are already installed."
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 3. Wallpapers & Initial Hyprpaper Configuration
+# ------------------------------------------------------------------------------
+log_info "Setting up wallpapers in ${PICTURES_DIR}/Wallpapers..."
+WALLPAPERS_SUBDIR="${PICTURES_DIR}/Wallpapers"
+mkdir -p "$WALLPAPERS_SUBDIR"
+
+if [ -f "${SCRIPT_DIR}/assets/wallpapers/light1.jpg" ] && [ ! -f "${WALLPAPERS_SUBDIR}/light1.jpg" ]; then
+    cp "${SCRIPT_DIR}/assets/wallpapers/light1.jpg" "${WALLPAPERS_SUBDIR}/light1.jpg"
+    log_success "Installed default light1.jpg into Wallpapers folder"
+fi
+
+if [ -f "${SCRIPT_DIR}/assets/wallpapers/dark1.jpg" ] && [ ! -f "${WALLPAPERS_SUBDIR}/dark1.jpg" ]; then
+    cp "${SCRIPT_DIR}/assets/wallpapers/dark1.jpg" "${WALLPAPERS_SUBDIR}/dark1.jpg"
+    log_success "Installed dark1.jpg into Wallpapers folder"
+fi
+
+mkdir -p "$HYPR_DIR"
+HYPRPAPER_CONF="${HYPR_DIR}/hyprpaper.conf"
+if [ ! -f "$HYPRPAPER_CONF" ]; then
+    DEFAULT_WALL="${WALLPAPERS_SUBDIR}/light1.jpg"
+    if [ ! -f "$DEFAULT_WALL" ] && [ -f "${WALLPAPERS_SUBDIR}/dark1.jpg" ]; then
+        DEFAULT_WALL="${WALLPAPERS_SUBDIR}/dark1.jpg"
+    fi
+    cat > "$HYPRPAPER_CONF" <<HYPRPAPER
+preload = ${DEFAULT_WALL}
+
+wallpaper {
+    monitor =
+    path = ${DEFAULT_WALL}
+}
+
+splash = false
+HYPRPAPER
+    log_success "Created default ${HYPRPAPER_CONF}"
+fi
+
+# ------------------------------------------------------------------------------
+# 4. Quickshell Configuration Setup
+# ------------------------------------------------------------------------------
+log_info "Configuring Quickshell destination: ${TARGET_DIR} (mode: ${MODE})..."
+
+if [ -w "${SCRIPT_DIR}/config/quickshell/scripts" ]; then
+    chmod +x "${SCRIPT_DIR}/config/quickshell/scripts/"*.sh 2>/dev/null || true
+fi
+
+install_quickshell_target() {
+    mkdir -p "$(dirname "$TARGET_DIR")"
+    if [ "$MODE" = "symlink" ]; then
+        ln -s "${SCRIPT_DIR}/config/quickshell" "$TARGET_DIR"
+        log_success "Symlinked ${SCRIPT_DIR}/config/quickshell -> ${TARGET_DIR}"
+    else
+        cp -r "${SCRIPT_DIR}/config/quickshell" "$TARGET_DIR"
+        chmod -R u+w "$TARGET_DIR" 2>/dev/null || true
+        chmod +x "${TARGET_DIR}/scripts/"*.sh 2>/dev/null || true
+        log_success "Copied configuration to ${TARGET_DIR}"
+    fi
+}
+
+if [ -e "$TARGET_DIR" ] || [ -L "$TARGET_DIR" ]; then
+    REAL_TARGET="$(readlink -f "$TARGET_DIR" 2>/dev/null || echo "")"
+    REAL_SOURCE="$(readlink -f "${SCRIPT_DIR}/config/quickshell")"
+
+    if [ "$MODE" = "symlink" ] && [ "$REAL_TARGET" = "$REAL_SOURCE" ]; then
+        log_success "${TARGET_DIR} is already linked to this repository."
+    else
+        BACKUP_DIR="${TARGET_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
+        log_warn "Existing quickshell configuration found. Backing up to ${BACKUP_DIR}..."
+        mv "$TARGET_DIR" "$BACKUP_DIR"
+        install_quickshell_target
+    fi
+else
+    install_quickshell_target
+fi
+
+# ------------------------------------------------------------------------------
+# 5. Hyprland Integration
+# ------------------------------------------------------------------------------
+log_info "Checking Hyprland configuration..."
+
+cp "${SCRIPT_DIR}/config/hypr/quickshell.conf" "${HYPR_DIR}/quickshell.conf"
+cp "${SCRIPT_DIR}/config/hypr/quickshell.lua" "${HYPR_DIR}/quickshell.lua"
+chmod u+w "${HYPR_DIR}/quickshell.conf" "${HYPR_DIR}/quickshell.lua" 2>/dev/null || true
+log_success "Installed Hyprland modules to ${HYPR_DIR}/quickshell.conf and quickshell.lua"
+
+if [ -f "${HYPR_DIR}/hyprland.lua" ]; then
+    log_info "Detected Hyprland Lua configuration: ${HYPR_DIR}/hyprland.lua"
+    if ! grep -q "quickshell.lua" "${HYPR_DIR}/hyprland.lua" 2>/dev/null; then
+        echo -e "  To activate all keybindings, add this line to ${BOLD}~/.config/hypr/hyprland.lua${RESET}:"
+        echo -e "  ${GREEN}dofile(os.getenv(\"HOME\") .. \"/.config/hypr/quickshell.lua\")${RESET}"
+    else
+        log_success "hyprland.lua already references quickshell.lua!"
+    fi
+elif [ -f "${HYPR_DIR}/hyprland.conf" ]; then
+    log_info "Detected standard Hyprland configuration: ${HYPR_DIR}/hyprland.conf"
+    if ! grep -q "quickshell.conf" "${HYPR_DIR}/hyprland.conf" 2>/dev/null; then
+        APPLY_HYPR=false
+        if [ "$AUTO_YES" = true ]; then
+            APPLY_HYPR=true
+        else
+            read -rp "Automatically add 'source = ~/.config/hypr/quickshell.conf' to hyprland.conf? [Y/n]: " conf_hypr
+            if [[ "$conf_hypr" =~ ^[Nn]$ ]]; then
+                APPLY_HYPR=false
+            else
+                APPLY_HYPR=true
+            fi
+        fi
+
+        if [ "$APPLY_HYPR" = true ]; then
+            cp "${HYPR_DIR}/hyprland.conf" "${HYPR_DIR}/hyprland.conf.backup.$(date +%Y%m%d_%H%M%S)"
+            echo "" >> "${HYPR_DIR}/hyprland.conf"
+            echo "# ChromaShell Integration" >> "${HYPR_DIR}/hyprland.conf"
+            echo "source = ~/.config/hypr/quickshell.conf" >> "${HYPR_DIR}/hyprland.conf"
+            log_success "Appended 'source = ~/.config/hypr/quickshell.conf' to hyprland.conf"
+        else
+            echo -e "  To activate keybindings manually, add to ${BOLD}~/.config/hypr/hyprland.conf${RESET}:"
+            echo -e "  ${GREEN}source = ~/.config/hypr/quickshell.conf${RESET}"
+        fi
+    else
+        log_success "hyprland.conf already sources quickshell.conf!"
+    fi
+else
+    log_info "No hyprland.conf found yet. You can source ${HYPR_DIR}/quickshell.conf in your Hyprland configuration."
+fi
+
+# ------------------------------------------------------------------------------
+# 6. Service / Process Management
+# ------------------------------------------------------------------------------
+echo ""
+log_info "Restarting or starting Quickshell..."
+
+if systemctl --user is-active quickshell-session >/dev/null 2>&1; then
+    systemctl --user restart quickshell-session
+    log_success "Restarted active quickshell-session service!"
+elif command -v quickshell >/dev/null 2>&1; then
+    pkill -x quickshell 2>/dev/null || true
+    sleep 0.5
+    nohup quickshell --no-duplicate >/dev/null 2>&1 &
+    disown
+    log_success "Spawned quickshell process in background."
+fi
+
+echo -e "\n${GREEN}${BOLD}ChromaShell installation complete!${RESET}"
+echo -e "Key Shortcuts Cheat Sheet:"
+echo -e "  - ${BOLD}SUPER${RESET} (press & release) : App Launcher"
+echo -e "  - ${BOLD}SUPER + V${RESET}                 : Clipboard Manager"
+echo -e "  - ${BOLD}SUPER + N${RESET}                 : Control Center & Notifications"
+echo -e "  - ${BOLD}CTRL + ALT + Delete${RESET}       : Power Menu OSD"
+echo -e "  - ${BOLD}SUPER + /${RESET}                 : Full Shortcuts Cheat Sheet Grid"
+echo -e "  - ${BOLD}SUPER + S / M / D${RESET}         : Scratchpads (Magic / Music / Comm)"
