@@ -19,7 +19,7 @@ Item {
     }
 
     // Dynamic Environment & Paths
-    readonly property string version: "0.3.1.1"
+    readonly property string version: "0.3.1.2"
     readonly property string userHome: Quickshell.env("HOME") || ""
     readonly property string configDir: userHome + "/.config/quickshell"
     readonly property string scriptsDir: configDir + "/scripts"

@@ -1,4 +1,4 @@
-# 🌈 ZaphShell `v0.3.1.1`
+# ZaphShell `v0.3.1.2`
 
 A complete, ultra-fluid, morphing desktop environment designed for **Hyprland** using **Quickshell** and **Qt Quick / QML**.
 
