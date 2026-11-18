@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# ChromaShell: Automated Installer
-# Setup script for Arch, Fedora, Debian/Ubuntu & Hyprland desktops
+# ZaphShell: Automated Installer (Arch Linux + Hyprland)
 # ==============================================================================
 
 set -euo pipefail
@@ -66,15 +65,15 @@ if [ -z "$MODE" ]; then
 fi
 
 echo -e "${BOLD}====================================================${RESET}"
-echo -e "${BOLD}          ChromaShell Installer (v0.3.1.1)          ${RESET}"
+echo -e "${BOLD}           ZaphShell Installer (v0.3.1.1)           ${RESET}"
 echo -e "${BOLD}====================================================${RESET}\n"
 
 # ------------------------------------------------------------------------------
-# 1. Dependency Checks & Suggestions
+# 1. Dependency Checks & Auto-Install (Arch Linux)
 # ------------------------------------------------------------------------------
-log_info "Checking system dependencies..."
+log_info "Checking core runtime dependencies..."
 
-DEPENDENCIES=(
+DEP_CMDS=(
     "quickshell"
     "hyprctl"
     "hyprpaper"
@@ -82,7 +81,6 @@ DEPENDENCIES=(
     "wl-paste"
     "cliphist"
     "playerctl"
-    "brightnessctl"
     "wpctl"
     "parec"
     "ffmpeg"
@@ -95,32 +93,66 @@ DEPENDENCIES=(
     "notify-send"
 )
 
-MISSING_DEPS=()
-for dep in "${DEPENDENCIES[@]}"; do
-    if ! command -v "$dep" >/dev/null 2>&1; then
-        MISSING_DEPS+=("$dep")
+DEP_PKGS=(
+    "quickshell"
+    "hyprland"
+    "hyprpaper"
+    "wl-clipboard"
+    "wl-clipboard"
+    "cliphist"
+    "playerctl"
+    "wireplumber"
+    "pipewire-pulse"
+    "ffmpeg"
+    "networkmanager"
+    "bluez-utils"
+    "grim"
+    "slurp"
+    "jq"
+    "python"
+    "libnotify"
+)
+
+MISSING_PKGS=()
+for i in "${!DEP_CMDS[@]}"; do
+    if ! command -v "${DEP_CMDS[$i]}" >/dev/null 2>&1; then
+        pkg="${DEP_PKGS[$i]}"
+        if [[ ! " ${MISSING_PKGS[*]} " =~ " ${pkg} " ]]; then
+            MISSING_PKGS+=("$pkg")
+        fi
     fi
 done
 
-if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
-    log_warn "Missing recommended dependencies: ${MISSING_DEPS[*]}"
-    if command -v pacman >/dev/null 2>&1; then
-        echo -e "  ${YELLOW}Install with pacman:${RESET}"
-        echo "  sudo pacman -S --needed hyprland quickshell hyprpaper wl-clipboard cliphist playerctl brightnessctl wireplumber pipewire-pulse ffmpeg networkmanager bluez-utils grim slurp jq python libnotify adwaita-fonts ttf-jetbrains-mono-nerd"
-    elif command -v dnf >/dev/null 2>&1; then
-        echo -e "  ${YELLOW}Install with dnf:${RESET}"
-        echo "  sudo dnf install -y hyprland hyprpaper wl-clipboard cliphist playerctl brightnessctl wireplumber pipewire-utils ffmpeg NetworkManager bluez grim slurp jq python3 libnotify adwaita-fonts-all jetbrains-mono-fonts-all"
-    elif command -v apt >/dev/null 2>&1; then
-        echo -e "  ${YELLOW}Install with apt:${RESET}"
-        echo "  sudo apt install -y hyprland wl-clipboard playerctl brightnessctl wireplumber pulseaudio-utils ffmpeg network-manager bluez grim slurp jq python3 libnotify-bin"
-    fi
-    echo ""
-    if [ "$AUTO_YES" = false ]; then
-        read -rp "Continue installation anyway? [y/N]: " confirm_cont
-        if [[ ! "$confirm_cont" =~ ^[Yy]$ ]]; then
-            log_error "Installation cancelled."
-            exit 1
+if command -v pacman >/dev/null 2>&1; then
+    for font_pkg in adwaita-fonts ttf-jetbrains-mono-nerd; do
+        if ! pacman -Qq "$font_pkg" >/dev/null 2>&1; then
+            MISSING_PKGS+=("$font_pkg")
         fi
+    done
+fi
+
+if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
+    log_warn "Missing dependencies: ${MISSING_PKGS[*]}"
+    if command -v pacman >/dev/null 2>&1; then
+        INSTALL_DEPS=false
+        if [ "$AUTO_YES" = true ]; then
+            INSTALL_DEPS=true
+        else
+            read -rp "Install missing dependencies now with pacman? [Y/n]: " dep_ans
+            if [[ ! "$dep_ans" =~ ^[Nn]$ ]]; then
+                INSTALL_DEPS=true
+            fi
+        fi
+
+        if [ "$INSTALL_DEPS" = true ]; then
+            sudo pacman -S --needed "${MISSING_PKGS[@]}"
+            log_success "Installed missing dependencies!"
+        else
+            log_warn "Continuing without installing missing dependencies."
+        fi
+    else
+        log_error "pacman not found. ZaphShell's automated installer targets Arch Linux."
+        exit 1
     fi
 else
     log_success "All core runtime dependencies found!"
@@ -133,13 +165,20 @@ if [ "$AUTO_YES" = false ]; then
     echo ""
     log_info "Default shell applications:"
     APP_KEYS=(   "kitty"    "firefox"  "thunar"       "btop"           "vscodium"    "discord"       "spotify")
-    APP_BINS=(   "kitty"    "firefox"  "thunar"       "btop"           "codium"      "discord"       "spotify")
     APP_ROLES=(  "Terminal" "Browser"  "File Manager" "System Monitor" "Code Editor" "Communication" "Music Player")
+
+    is_app_installed() {
+        case "$1" in
+            vscodium) command -v codium >/dev/null 2>&1 ;;
+            spotify)  command -v spotify >/dev/null 2>&1 || command -v spotify-launcher >/dev/null 2>&1 ;;
+            *)        command -v "$1" >/dev/null 2>&1 ;;
+        esac
+    }
 
     ANY_APP_MISSING=false
     for i in "${!APP_KEYS[@]}"; do
         status_label="${GREEN}installed${RESET}"
-        if ! command -v "${APP_BINS[$i]}" >/dev/null 2>&1; then
+        if ! is_app_installed "${APP_KEYS[$i]}"; then
             status_label="${YELLOW}not installed${RESET}"
             ANY_APP_MISSING=true
         fi
@@ -170,58 +209,35 @@ if [ "$AUTO_YES" = false ]; then
             if [ ${#SELECTED_APPS[@]} -gt 0 ]; then
                 REPO_PKGS=()
                 AUR_PKGS=()
-                MANUAL_PKGS=()
 
-                if command -v pacman >/dev/null 2>&1; then
-                    for app in "${SELECTED_APPS[@]}"; do
-                        case "$app" in
-                            kitty|firefox|thunar|btop|discord) REPO_PKGS+=("$app") ;;
-                            vscodium) AUR_PKGS+=("vscodium-bin") ;;
-                            spotify) AUR_PKGS+=("spotify") ;;
-                        esac
-                    done
+                for app in "${SELECTED_APPS[@]}"; do
+                    case "$app" in
+                        kitty|firefox|thunar|btop|discord) REPO_PKGS+=("$app") ;;
+                        spotify) REPO_PKGS+=("spotify-launcher") ;;
+                        vscodium) AUR_PKGS+=("vscodium-bin") ;;
+                    esac
+                done
 
-                    if [ ${#REPO_PKGS[@]} -gt 0 ]; then
-                        log_info "Installing official repository apps: ${REPO_PKGS[*]}"
-                        sudo pacman -S --needed "${REPO_PKGS[@]}"
+                if [ ${#REPO_PKGS[@]} -gt 0 ]; then
+                    log_info "Installing official repository apps: ${REPO_PKGS[*]}"
+                    sudo pacman -S --needed "${REPO_PKGS[@]}"
+                fi
+
+                if [ ${#AUR_PKGS[@]} -gt 0 ]; then
+                    AUR_HELPER=""
+                    if command -v yay >/dev/null 2>&1; then
+                        AUR_HELPER="yay"
+                    elif command -v paru >/dev/null 2>&1; then
+                        AUR_HELPER="paru"
                     fi
 
-                    if [ ${#AUR_PKGS[@]} -gt 0 ]; then
-                        AUR_HELPER=""
-                        if command -v yay >/dev/null 2>&1; then
-                            AUR_HELPER="yay"
-                        elif command -v paru >/dev/null 2>&1; then
-                            AUR_HELPER="paru"
-                        fi
-
-                        if [ -n "$AUR_HELPER" ]; then
-                            log_info "Installing AUR apps via ${AUR_HELPER}: ${AUR_PKGS[*]}"
-                            "$AUR_HELPER" -S --needed "${AUR_PKGS[@]}"
-                        else
-                            log_warn "No AUR helper (yay/paru) found for: ${AUR_PKGS[*]}"
-                            echo "  Install them manually from the AUR, e.g.: yay -S ${AUR_PKGS[*]}"
-                        fi
+                    if [ -n "$AUR_HELPER" ]; then
+                        log_info "Installing AUR apps via ${AUR_HELPER}: ${AUR_PKGS[*]}"
+                        "$AUR_HELPER" -S --needed "${AUR_PKGS[@]}"
+                    else
+                        log_warn "No AUR helper (yay/paru) found for: ${AUR_PKGS[*]}"
+                        echo "  Install manually from AUR, e.g.: yay -S ${AUR_PKGS[*]}"
                     fi
-                elif command -v dnf >/dev/null 2>&1; then
-                    for app in "${SELECTED_APPS[@]}"; do
-                        case "$app" in
-                            kitty|firefox|thunar|btop) REPO_PKGS+=("$app") ;;
-                            *) MANUAL_PKGS+=("$app") ;;
-                        esac
-                    done
-                    [ ${#REPO_PKGS[@]} -gt 0 ] && sudo dnf install -y "${REPO_PKGS[@]}"
-                    [ ${#MANUAL_PKGS[@]} -gt 0 ] && log_warn "Install separately via Flatpak/third-party repo: ${MANUAL_PKGS[*]}"
-                elif command -v apt >/dev/null 2>&1; then
-                    for app in "${SELECTED_APPS[@]}"; do
-                        case "$app" in
-                            kitty|firefox|thunar|btop) REPO_PKGS+=("$app") ;;
-                            *) MANUAL_PKGS+=("$app") ;;
-                        esac
-                    done
-                    [ ${#REPO_PKGS[@]} -gt 0 ] && sudo apt install -y "${REPO_PKGS[@]}"
-                    [ ${#MANUAL_PKGS[@]} -gt 0 ] && log_warn "Install separately via Flatpak/vendor repo: ${MANUAL_PKGS[*]}"
-                else
-                    log_warn "Unsupported package manager; please install manually: ${SELECTED_APPS[*]}"
                 fi
             fi
         fi
@@ -322,7 +338,7 @@ if [ -f "${HYPR_DIR}/hyprland.lua" ]; then
         if [ "$AUTO_YES" = true ]; then
             APPLY_LUA=true
         else
-            read -rp "Automatically load ChromaShell shortcuts and settings in hyprland.lua? [Y/n]: " lua_hypr
+            read -rp "Automatically load ZaphShell shortcuts and settings in hyprland.lua? [Y/n]: " lua_hypr
             if [[ "$lua_hypr" =~ ^[Nn]$ ]]; then
                 APPLY_LUA=false
             else
@@ -332,8 +348,8 @@ if [ -f "${HYPR_DIR}/hyprland.lua" ]; then
 
         if [ "$APPLY_LUA" = true ]; then
             cp "${HYPR_DIR}/hyprland.lua" "${HYPR_DIR}/hyprland.lua.backup.$(date +%Y%m%d_%H%M%S)"
-            printf '\n-- ChromaShell Integration\ndofile((os.getenv("HOME") or "") .. "/.config/hypr/quickshell.lua")\n' >> "${HYPR_DIR}/hyprland.lua"
-            log_success "Appended ChromaShell integration to hyprland.lua"
+            printf '\n-- ZaphShell Integration\ndofile((os.getenv("HOME") or "") .. "/.config/hypr/quickshell.lua")\n' >> "${HYPR_DIR}/hyprland.lua"
+            log_success "Appended ZaphShell integration to hyprland.lua"
         else
             echo -e "  To activate keybindings manually, add to ${BOLD}~/.config/hypr/hyprland.lua${RESET}:"
             echo -e "  ${GREEN}dofile((os.getenv(\"HOME\") or \"\") .. \"/.config/hypr/quickshell.lua\")${RESET}"
@@ -359,7 +375,7 @@ elif [ -f "${HYPR_DIR}/hyprland.conf" ]; then
         if [ "$APPLY_HYPR" = true ]; then
             cp "${HYPR_DIR}/hyprland.conf" "${HYPR_DIR}/hyprland.conf.backup.$(date +%Y%m%d_%H%M%S)"
             echo "" >> "${HYPR_DIR}/hyprland.conf"
-            echo "# ChromaShell Integration" >> "${HYPR_DIR}/hyprland.conf"
+            echo "# ZaphShell Integration" >> "${HYPR_DIR}/hyprland.conf"
             echo "source = ~/.config/hypr/quickshell.conf" >> "${HYPR_DIR}/hyprland.conf"
             log_success "Appended 'source = ~/.config/hypr/quickshell.conf' to hyprland.conf"
         else
@@ -372,8 +388,8 @@ elif [ -f "${HYPR_DIR}/hyprland.conf" ]; then
 else
     if [ -f /usr/share/hypr/hyprland.lua ]; then
         cp /usr/share/hypr/hyprland.lua "${HYPR_DIR}/hyprland.lua"
-        printf '\n-- ChromaShell Integration\ndofile((os.getenv("HOME") or "") .. "/.config/hypr/quickshell.lua")\n' >> "${HYPR_DIR}/hyprland.lua"
-        log_success "Initialized ${HYPR_DIR}/hyprland.lua with ChromaShell integration"
+        printf '\n-- ZaphShell Integration\ndofile((os.getenv("HOME") or "") .. "/.config/hypr/quickshell.lua")\n' >> "${HYPR_DIR}/hyprland.lua"
+        log_success "Initialized ${HYPR_DIR}/hyprland.lua with ZaphShell integration"
     else
         printf '# Hyprland configuration\nsource = ~/.config/hypr/quickshell.conf\n' > "${HYPR_DIR}/hyprland.conf"
         log_success "Created ${HYPR_DIR}/hyprland.conf sourcing quickshell.conf"
@@ -388,11 +404,32 @@ fi
 # 6. Service / Process Management
 # ------------------------------------------------------------------------------
 echo ""
-log_info "Restarting or starting Quickshell..."
+log_info "Configuring Quickshell user service..."
 
-if systemctl --user is-active quickshell-session >/dev/null 2>&1; then
-    systemctl --user restart quickshell-session
-    log_success "Restarted active quickshell-session service!"
+if command -v systemctl >/dev/null 2>&1 && systemctl --user status >/dev/null 2>&1; then
+    USER_SYSTEMD_DIR="${HOME}/.config/systemd/user"
+    QS_BIN="$(command -v quickshell || echo /usr/bin/quickshell)"
+    mkdir -p "$USER_SYSTEMD_DIR"
+    cat > "${USER_SYSTEMD_DIR}/quickshell-session.service" <<EOF
+[Unit]
+Description=ZaphShell (Quickshell)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=${QS_BIN} --no-duplicate
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=graphical-session.target
+EOF
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    systemctl --user enable quickshell-session.service >/dev/null 2>&1 || true
+    pkill -x quickshell 2>/dev/null || true
+    sleep 0.3
+    systemctl --user restart quickshell-session.service
+    log_success "Enabled and started quickshell-session.service (auto-restart on crash)"
 elif command -v quickshell >/dev/null 2>&1; then
     pkill -x quickshell 2>/dev/null || true
     sleep 0.5
@@ -401,7 +438,7 @@ elif command -v quickshell >/dev/null 2>&1; then
     log_success "Spawned quickshell process in background."
 fi
 
-echo -e "\n${GREEN}${BOLD}ChromaShell installation complete!${RESET}"
+echo -e "\n${GREEN}${BOLD}ZaphShell installation complete!${RESET}"
 echo -e "Key Shortcuts Cheat Sheet:"
 echo -e "  - ${BOLD}SUPER${RESET} (press & release) : App Launcher"
 echo -e "  - ${BOLD}SUPER + V${RESET}                 : Clipboard Manager"

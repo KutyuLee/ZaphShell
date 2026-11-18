@@ -1,5 +1,5 @@
 -- ==============================================================================
--- CHROMASHELL HYPRLAND LUA CONFIGURATION MODULE
+-- ZAPHSHELL HYPRLAND LUA CONFIGURATION MODULE
 -- Include this file in your main hyprland.lua:
 --   dofile(os.getenv("HOME") .. "/.config/hypr/quickshell.lua")
 -- ==============================================================================
@@ -239,6 +239,6 @@ rebind(mainMod .. " + N", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleCo
 rebind("CTRL + ALT + C", hl.dsp.exec_cmd("quickshell ipc -n call shell clearNotifs"))
 rebind(mainMod .. " + L", hl.dsp.exec_cmd("quickshell ipc -n call shell lock"))
 rebind(mainMod .. " + ALT + L", hl.dsp.exec_cmd("quickshell ipc -n call shell lock"))
-rebind(mainMod .. " + SHIFT + L", hl.dsp.exec_cmd("systemctl suspend"))
+rebind(mainMod .. " + SHIFT + L", hl.dsp.exec_cmd(qsScript .. "power-action.sh suspend"))
 rebind(mainMod .. " + slash",    hl.dsp.exec_cmd("quickshell ipc -n call shell toggleCheatSheet"))
 rebind(mainMod .. " + question", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleCheatSheet"))

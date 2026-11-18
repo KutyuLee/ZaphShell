@@ -1596,7 +1596,7 @@ IslandFloatPanel {
                     RowLayout {
                         spacing: 8
                         Text {
-                            text: "ChromaShell Settings"
+                            text: "ZaphShell Settings"
                             font.family: Theme.fontFamily
                             font.pixelSize: 15
                             font.bold: true
@@ -4391,7 +4391,7 @@ IslandFloatPanel {
                 spacing: 10
 
                 Text {
-                    text: "󰆓  ChromaShell " + ShellState.version
+                    text: "󰆓  ZaphShell " + ShellState.version
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                     color: Theme.subtext

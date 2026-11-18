@@ -1,10 +1,10 @@
 # Maintainer: David <david@localhost>
-pkgname=chromashell-git
+pkgname=zaphshell-git
 pkgver=0.3.1.1.r0.g0000000
 pkgrel=1
 pkgdesc="Fluid morphing desktop environment for Hyprland built with Quickshell and Liquid Glass shaders"
 arch=('any')
-url="https://github.com/Davidgaming1358/ChromaShell"
+url="https://github.com/KutyuLee/ZaphShell"
 license=('MIT')
 depends=(
     'hyprland'
@@ -38,11 +38,11 @@ optdepends=(
     'btop: default system monitor'
     'vscodium-bin: default code editor (AUR)'
     'discord: default communication client'
-    'spotify: default music player (AUR)'
+    'spotify-launcher: default music player'
 )
-provides=('chromashell')
-conflicts=('chromashell')
-install='chromashell.install'
+provides=('zaphshell')
+conflicts=('zaphshell')
+install='zaphshell.install'
 source=("${pkgname}::git+${url}.git")
 sha256sums=('SKIP')
 
@@ -69,21 +69,21 @@ build() {
 package() {
     cd "${srcdir}/${pkgname}"
 
-    install -dm755 "${pkgdir}/usr/share/chromashell"
-    cp -a assets config install.sh uninstall.sh "${pkgdir}/usr/share/chromashell/"
+    install -dm755 "${pkgdir}/usr/share/zaphshell"
+    cp -a assets config install.sh uninstall.sh "${pkgdir}/usr/share/zaphshell/"
 
     install -dm755 "${pkgdir}/usr/bin"
-    cat <<'EOF' > "${pkgdir}/usr/bin/chromashell-setup"
+    cat <<'EOF' > "${pkgdir}/usr/bin/zaphshell-setup"
 #!/usr/bin/env bash
-exec /usr/share/chromashell/install.sh --copy "$@"
+exec /usr/share/zaphshell/install.sh --copy "$@"
 EOF
-    chmod 755 "${pkgdir}/usr/bin/chromashell-setup"
+    chmod 755 "${pkgdir}/usr/bin/zaphshell-setup"
 
-    cat <<'EOF' > "${pkgdir}/usr/bin/chromashell-uninstall"
+    cat <<'EOF' > "${pkgdir}/usr/bin/zaphshell-uninstall"
 #!/usr/bin/env bash
-exec /usr/share/chromashell/uninstall.sh "$@"
+exec /usr/share/zaphshell/uninstall.sh "$@"
 EOF
-    chmod 755 "${pkgdir}/usr/bin/chromashell-uninstall"
+    chmod 755 "${pkgdir}/usr/bin/zaphshell-uninstall"
 
     install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
     install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"

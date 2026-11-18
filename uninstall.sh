@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# ChromaShell: Uninstaller
-# Safely removes ChromaShell links and restores previous configuration
+# ZaphShell: Uninstaller
+# Safely removes ZaphShell links and restores previous configuration
 # ==============================================================================
 
 set -euo pipefail
@@ -21,7 +21,7 @@ TARGET_DIR="${HOME}/.config/quickshell"
 HYPR_DIR="${HOME}/.config/hypr"
 
 echo -e "${BOLD}====================================================${RESET}"
-echo -e "${BOLD}           ChromaShell Uninstaller                  ${RESET}"
+echo -e "${BOLD}           ZaphShell Uninstaller                  ${RESET}"
 echo -e "${BOLD}====================================================${RESET}\n"
 
 # Stop quickshell if running
@@ -59,21 +59,21 @@ fi
 if [ -f "${HYPR_DIR}/hyprland.lua" ]; then
     if grep -q "quickshell.lua" "${HYPR_DIR}/hyprland.lua"; then
         sed -i '/quickshell\.lua/d' "${HYPR_DIR}/hyprland.lua"
-        sed -i '/ChromaShell Integration/d' "${HYPR_DIR}/hyprland.lua"
+        sed -i '/ZaphShell Integration/d' "${HYPR_DIR}/hyprland.lua"
         log_success "Cleaned quickshell references from hyprland.lua"
     fi
 fi
 
 if [ -f "${HYPR_DIR}/hyprland.conf" ]; then
-    if grep -q "quickshell.conf\|chromashell-overrides.conf" "${HYPR_DIR}/hyprland.conf"; then
+    if grep -q "quickshell.conf\|zaphshell-overrides.conf" "${HYPR_DIR}/hyprland.conf"; then
         sed -i '/quickshell\.conf/d' "${HYPR_DIR}/hyprland.conf"
-        sed -i '/chromashell-overrides\.conf/d' "${HYPR_DIR}/hyprland.conf"
-        sed -i '/ChromaShell/d' "${HYPR_DIR}/hyprland.conf"
+        sed -i '/zaphshell-overrides\.conf/d' "${HYPR_DIR}/hyprland.conf"
+        sed -i '/ZaphShell/d' "${HYPR_DIR}/hyprland.conf"
         log_success "Cleaned quickshell references from hyprland.conf"
     fi
 fi
 
-rm -f "${HYPR_DIR}/quickshell.conf" "${HYPR_DIR}/quickshell.lua" "${HYPR_DIR}/chromashell-overrides.conf"
+rm -f "${HYPR_DIR}/quickshell.conf" "${HYPR_DIR}/quickshell.lua" "${HYPR_DIR}/zaphshell-overrides.conf"
 log_success "Removed Hyprland modules (${HYPR_DIR}/quickshell.*)"
 
 echo -e "\n${GREEN}Uninstallation finished successfully.${RESET}"

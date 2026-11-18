@@ -66,7 +66,8 @@ PanelWindow {
             danger: false,
             action: function() {
                 ShellState.powerOsdOpen = false;
-                Quickshell.execDetached(["systemctl", "suspend"]);
+                ShellState.lockScreen();
+                Quickshell.execDetached([ShellState.script("power-action.sh"), "suspend"]);
             }
         },
         {

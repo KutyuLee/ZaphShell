@@ -277,7 +277,10 @@ PanelWindow {
                 icon: "󰤄"
                 label: "Sleep"
                 iconColor: Theme.subtext
-                onTriggered: Quickshell.execDetached(["systemctl", "suspend"])
+                onTriggered: {
+                    ShellState.lockScreen();
+                    Quickshell.execDetached([ShellState.script("power-action.sh"), "suspend"]);
+                }
             }
 
             MenuItem {

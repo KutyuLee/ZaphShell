@@ -1,8 +1,8 @@
-# 🌈 ChromaShell `v0.3.1.1`
+# 🌈 ZaphShell `v0.3.1.1`
 
 A complete, ultra-fluid, morphing desktop environment designed for **Hyprland** using **Quickshell** and **Qt Quick / QML**.
 
-Instead of disconnected, floating rectangular bars, **ChromaShell** wraps your primary monitor in an organic, continuous glass screen border with physical elastic deformations: the Application Launcher and Clipboard Manager physically pull up out of the bottom border, Tray Icon menus and Notification panels morph downwards from the top bar, and Volume / Power OSDs slide out from the right screen boundary with smooth spring physics.
+Instead of disconnected, floating rectangular bars, **ZaphShell** wraps your primary monitor in an organic, continuous glass screen border with physical elastic deformations: the Application Launcher and Clipboard Manager physically pull up out of the bottom border, Tray Icon menus and Notification panels morph downwards from the top bar, and Volume / Power OSDs slide out from the right screen boundary with smooth spring physics.
 
 ---
 
@@ -48,43 +48,38 @@ Instead of disconnected, floating rectangular bars, **ChromaShell** wraps your p
 
 #### Arch Linux / EndeavourOS:
 ```bash
-sudo pacman -S --needed hyprland quickshell hyprpaper wl-clipboard cliphist playerctl brightnessctl wireplumber pipewire-pulse ffmpeg networkmanager bluez-utils grim slurp jq python libnotify adwaita-fonts ttf-jetbrains-mono-nerd
-```
-
-#### Fedora:
-```bash
-sudo dnf install -y hyprland hyprpaper wl-clipboard cliphist playerctl brightnessctl wireplumber pipewire-utils ffmpeg NetworkManager bluez grim slurp jq python3 libnotify adwaita-fonts-all jetbrains-mono-fonts-all
+sudo pacman -S --needed hyprland quickshell hyprpaper wl-clipboard cliphist playerctl wireplumber pipewire-pulse ffmpeg networkmanager bluez-utils grim slurp jq python libnotify adwaita-fonts ttf-jetbrains-mono-nerd
 ```
 
 ---
 
 ## 🚀 Installation
 
-### Option 1: AUR (Arch Linux)
-Once published to the AUR (`chromashell-git`):
+### Option 1: Arch Package (`makepkg`)
 ```bash
-yay -S chromashell-git
-chromashell-setup
+git clone https://github.com/KutyuLee/ZaphShell.git ~/ZaphShell
+cd ~/ZaphShell/packaging/aur
+makepkg -si
+zaphshell-setup
 ```
 
-### Option 2: From Source
-Clone and run the automated installer:
+### Option 2: Direct Installer
+Clone and run the automated installer (automatically installs missing Arch dependencies):
 
 ```bash
-git clone https://github.com/Davidgaming1358/ChromaShell.git ~/ChromaShell
-cd ~/ChromaShell
+git clone https://github.com/KutyuLee/ZaphShell.git ~/ZaphShell
+cd ~/ZaphShell
 chmod +x install.sh
 ./install.sh
 ```
 
 The installer will:
-1. Check all required runtime dependencies.
+1. Check and install any missing runtime dependencies via `pacman`.
 2. Optionally let you install default shell apps (`kitty`, `firefox`, `thunar`, `btop`, `vscodium`, `discord`, `spotify`).
 3. Copy default wallpapers (`dark1.jpg`, `light1.jpg`) into `~/Pictures/Wallpapers/` and seed `~/.config/hypr/hyprpaper.conf` if missing.
 4. Back up any existing `~/.config/quickshell` and symlink (or copy with `--copy`) the shell configuration.
-5. Install Hyprland modules (`~/.config/hypr/quickshell.conf` and `quickshell.lua`).
-6. Offer to source the keybindings directly in your `hyprland.conf`.
-7. Reload / restart Quickshell.
+5. Install Hyprland modules (`~/.config/hypr/quickshell.conf` and `quickshell.lua`) and integrate them into `hyprland.lua` / `hyprland.conf`.
+6. Enable `quickshell-session.service` and start ZaphShell.
 
 ### Manual Hyprland Integration
 
@@ -236,7 +231,7 @@ QUICKSHELL_MONITOR="HDMI-A-1" quickshell
 To revert to your previous setup:
 
 ```bash
-cd ~/ChromaShell
+cd ~/ZaphShell
 ./uninstall.sh
 ```
 

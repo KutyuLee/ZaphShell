@@ -1,6 +1,6 @@
-# Fonts Requirement for ChromaShell
+# Fonts Requirement for ZaphShell
 
-ChromaShell utilizes standard modern sans-serif typography for UI labels and **Nerd Font** glyphs for all indicators, tray badges, media controls, and weather symbols.
+ZaphShell utilizes standard modern sans-serif typography for UI labels and **Nerd Font** glyphs for all indicators, tray badges, media controls, and weather symbols.
 
 ### Recommended Fonts:
 1. **Icons**: `Symbols Nerd Font` or any patched Nerd Font (e.g. `JetBrains Mono Nerd Font`)

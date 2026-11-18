@@ -1,0 +1,13 @@
+post_install() {
+    echo ""
+    echo "==> ZaphShell files are installed in /usr/share/zaphshell"
+    echo "==> Run the following as your user to configure ~/.config/quickshell, Hyprland, wallpapers, and optional default apps:"
+    echo "    zaphshell-setup"
+    echo ""
+}
+
+post_upgrade() {
+    echo ""
+    echo "==> Run 'zaphshell-setup' as your user to update ~/.config/quickshell and ~/.config/hypr/quickshell.* copies."
+    echo ""
+}

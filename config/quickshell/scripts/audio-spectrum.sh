@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real-time 5-band PipeWire/Pulse audio spectrum analyzer for ChromaShell."""
+"""Real-time 5-band PipeWire/Pulse audio spectrum analyzer for ZaphShell."""
 
 import array
 import math

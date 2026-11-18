@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ChromaShell validation script: lints all QML files and checks bash script syntax.
+# ZaphShell validation script: lints all QML files and checks bash script syntax.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
