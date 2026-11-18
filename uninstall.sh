@@ -56,15 +56,24 @@ if [ -n "$LATEST_BACKUP" ] && [ -d "$LATEST_BACKUP" ]; then
 fi
 
 # Clean up hyprland integration
+if [ -f "${HYPR_DIR}/hyprland.lua" ]; then
+    if grep -q "quickshell.lua" "${HYPR_DIR}/hyprland.lua"; then
+        sed -i '/quickshell\.lua/d' "${HYPR_DIR}/hyprland.lua"
+        sed -i '/ChromaShell Integration/d' "${HYPR_DIR}/hyprland.lua"
+        log_success "Cleaned quickshell references from hyprland.lua"
+    fi
+fi
+
 if [ -f "${HYPR_DIR}/hyprland.conf" ]; then
-    if grep -q "quickshell.conf" "${HYPR_DIR}/hyprland.conf"; then
+    if grep -q "quickshell.conf\|chromashell-overrides.conf" "${HYPR_DIR}/hyprland.conf"; then
         sed -i '/quickshell\.conf/d' "${HYPR_DIR}/hyprland.conf"
+        sed -i '/chromashell-overrides\.conf/d' "${HYPR_DIR}/hyprland.conf"
         sed -i '/ChromaShell/d' "${HYPR_DIR}/hyprland.conf"
         log_success "Cleaned quickshell references from hyprland.conf"
     fi
 fi
 
-rm -f "${HYPR_DIR}/quickshell.conf" "${HYPR_DIR}/quickshell.lua"
+rm -f "${HYPR_DIR}/quickshell.conf" "${HYPR_DIR}/quickshell.lua" "${HYPR_DIR}/chromashell-overrides.conf"
 log_success "Removed Hyprland modules (${HYPR_DIR}/quickshell.*)"
 
 echo -e "\n${GREEN}Uninstallation finished successfully.${RESET}"

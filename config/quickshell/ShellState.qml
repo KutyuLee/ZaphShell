@@ -19,7 +19,7 @@ Item {
     }
 
     // Dynamic Environment & Paths
-    readonly property string version: "0.3.1"
+    readonly property string version: "0.3.1.1"
     readonly property string userHome: Quickshell.env("HOME") || ""
     readonly property string configDir: userHome + "/.config/quickshell"
     readonly property string scriptsDir: configDir + "/scripts"
@@ -70,7 +70,7 @@ Item {
     property bool controlCenterOpen: false
     property bool volumeOsdOpen: false
     property bool kbOsdOpen: false
-    property string activeKeyboardLayout: "English (UK)"
+    property string activeKeyboardLayout: "English (US)"
     property bool kbSwitchPending: false
     property int kbSwitchSeq: 0
     property bool notifOpen: false
@@ -111,7 +111,7 @@ Item {
     property bool panelWavesEnabled: true
     property bool liquidGlassEnabled: true
     property bool secondaryFullBar: true
-    property bool showDebugButton: true
+    property bool showDebugButton: false
     property bool musicAppsOnlyOnIsland: true
     property bool announceMediaChanges: true
     property string animationStyle: "relaxed" // "relaxed" | "snappy"
@@ -448,7 +448,7 @@ Item {
         root.panelWavesEnabled = true;
         root.liquidGlassEnabled = true;
         root.secondaryFullBar = true;
-        root.showDebugButton = true;
+        root.showDebugButton = false;
         root.musicAppsOnlyOnIsland = true;
         root.announceMediaChanges = true;
         root.animationStyle = "relaxed";

@@ -47,7 +47,7 @@ IslandFloatPanel {
     property string selectedMonMirror: ""
     property bool selectedMonDisabled: false
 
-    property string kbLayoutInput: "gb,us"
+    property string kbLayoutInput: "us"
     property string kbVariantInput: ""
     property string kbOptionsInput: ""
     property string kbActiveName: ShellState.activeKeyboardLayout
@@ -125,7 +125,7 @@ IslandFloatPanel {
                 root.syncSelectedMonitorDraft();
             }
             if (obj.keyboard) {
-                root.kbLayoutInput = String(obj.keyboard.layout || "gb,us");
+                root.kbLayoutInput = String(obj.keyboard.layout || "us");
                 root.kbVariantInput = String(obj.keyboard.variant || "");
                 root.kbOptionsInput = String(obj.keyboard.options || "");
                 if (obj.keyboard.activeLayout) {

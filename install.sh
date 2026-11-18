@@ -66,7 +66,7 @@ if [ -z "$MODE" ]; then
 fi
 
 echo -e "${BOLD}====================================================${RESET}"
-echo -e "${BOLD}           ChromaShell Installer (v0.3.1)           ${RESET}"
+echo -e "${BOLD}          ChromaShell Installer (v0.3.1.1)          ${RESET}"
 echo -e "${BOLD}====================================================${RESET}\n"
 
 # ------------------------------------------------------------------------------
@@ -318,8 +318,26 @@ log_success "Installed Hyprland modules to ${HYPR_DIR}/quickshell.conf and quick
 if [ -f "${HYPR_DIR}/hyprland.lua" ]; then
     log_info "Detected Hyprland Lua configuration: ${HYPR_DIR}/hyprland.lua"
     if ! grep -q "quickshell.lua" "${HYPR_DIR}/hyprland.lua" 2>/dev/null; then
-        echo -e "  To activate all keybindings, add this line to ${BOLD}~/.config/hypr/hyprland.lua${RESET}:"
-        echo -e "  ${GREEN}dofile(os.getenv(\"HOME\") .. \"/.config/hypr/quickshell.lua\")${RESET}"
+        APPLY_LUA=false
+        if [ "$AUTO_YES" = true ]; then
+            APPLY_LUA=true
+        else
+            read -rp "Automatically load ChromaShell shortcuts and settings in hyprland.lua? [Y/n]: " lua_hypr
+            if [[ "$lua_hypr" =~ ^[Nn]$ ]]; then
+                APPLY_LUA=false
+            else
+                APPLY_LUA=true
+            fi
+        fi
+
+        if [ "$APPLY_LUA" = true ]; then
+            cp "${HYPR_DIR}/hyprland.lua" "${HYPR_DIR}/hyprland.lua.backup.$(date +%Y%m%d_%H%M%S)"
+            printf '\n-- ChromaShell Integration\ndofile((os.getenv("HOME") or "") .. "/.config/hypr/quickshell.lua")\n' >> "${HYPR_DIR}/hyprland.lua"
+            log_success "Appended ChromaShell integration to hyprland.lua"
+        else
+            echo -e "  To activate keybindings manually, add to ${BOLD}~/.config/hypr/hyprland.lua${RESET}:"
+            echo -e "  ${GREEN}dofile((os.getenv(\"HOME\") or \"\") .. \"/.config/hypr/quickshell.lua\")${RESET}"
+        fi
     else
         log_success "hyprland.lua already references quickshell.lua!"
     fi
@@ -352,7 +370,18 @@ elif [ -f "${HYPR_DIR}/hyprland.conf" ]; then
         log_success "hyprland.conf already sources quickshell.conf!"
     fi
 else
-    log_info "No hyprland.conf found yet. You can source ${HYPR_DIR}/quickshell.conf in your Hyprland configuration."
+    if [ -f /usr/share/hypr/hyprland.lua ]; then
+        cp /usr/share/hypr/hyprland.lua "${HYPR_DIR}/hyprland.lua"
+        printf '\n-- ChromaShell Integration\ndofile((os.getenv("HOME") or "") .. "/.config/hypr/quickshell.lua")\n' >> "${HYPR_DIR}/hyprland.lua"
+        log_success "Initialized ${HYPR_DIR}/hyprland.lua with ChromaShell integration"
+    else
+        printf '# Hyprland configuration\nsource = ~/.config/hypr/quickshell.conf\n' > "${HYPR_DIR}/hyprland.conf"
+        log_success "Created ${HYPR_DIR}/hyprland.conf sourcing quickshell.conf"
+    fi
+fi
+
+if command -v hyprctl >/dev/null 2>&1; then
+    hyprctl reload >/dev/null 2>&1 || true
 fi
 
 # ------------------------------------------------------------------------------

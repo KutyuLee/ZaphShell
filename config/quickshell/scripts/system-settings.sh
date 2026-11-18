@@ -5,6 +5,9 @@ import re
 import subprocess
 import sys
 
+import time
+
+
 HYPR_LUA = os.path.expanduser("~/.config/hypr/hyprland.lua")
 HYPR_CONF = os.path.expanduser("~/.config/hypr/hyprland.conf")
 CHROMA_CONF = os.path.expanduser("~/.config/hypr/chromashell-overrides.conf")
@@ -100,7 +103,13 @@ def write_conf_overrides(obj):
     with open(CHROMA_CONF, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
-    if os.path.isfile(HYPR_CONF):
+    if not os.path.isfile(HYPR_CONF):
+        try:
+            with open(HYPR_CONF, "w", encoding="utf-8") as f:
+                f.write("# Hyprland configuration\nsource = ~/.config/hypr/quickshell.conf\nsource = ~/.config/hypr/chromashell-overrides.conf\n")
+        except Exception:
+            pass
+    else:
         try:
             with open(HYPR_CONF, "r", encoding="utf-8") as f:
                 hc = f.read()
@@ -127,13 +136,22 @@ def write_hypr_lua(content):
     subprocess.run(["hyprctl", "reload"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3.0)
 
 
+def lua_escape(val):
+    return str(val).replace("\\", "\\\\").replace('"', '\\"')
+
+
 def extract_lua_str(text, key, default=""):
+    m = re.search(rf'^[ \t]*{re.escape(key)}\s*=\s*"([^"]*)"', text, re.MULTILINE)
+    if m:
+        return m.group(1)
     m = re.search(rf'\b{re.escape(key)}\s*=\s*"([^"]*)"', text)
     return m.group(1) if m else default
 
 
 def extract_lua_num(text, key, default=0.0):
-    m = re.search(rf'\b{re.escape(key)}\s*=\s*(-?\d+(?:\.\d+)?)', text)
+    m = re.search(rf'^[ \t]*{re.escape(key)}\s*=\s*(-?\d+(?:\.\d+)?)', text, re.MULTILINE)
+    if not m:
+        m = re.search(rf'\b{re.escape(key)}\s*=\s*(-?\d+(?:\.\d+)?)', text)
     try:
         return float(m.group(1)) if m else default
     except Exception:
@@ -141,24 +159,26 @@ def extract_lua_num(text, key, default=0.0):
 
 
 def extract_lua_bool(text, key, default=False):
-    m = re.search(rf'\b{re.escape(key)}\s*=\s*(true|false)', text)
+    m = re.search(rf'^[ \t]*{re.escape(key)}\s*=\s*(true|false)', text, re.MULTILINE)
+    if not m:
+        m = re.search(rf'\b{re.escape(key)}\s*=\s*(true|false)', text)
     if not m:
         return default
     return m.group(1) == "true"
 
 
 def replace_lua_str(text, key, val):
-    escaped = val.replace("\\", "\\\\").replace('"', '\\"')
-    pat = rf'(\b{re.escape(key)}\s*=\s*)"[^"]*"'
-    if re.search(pat, text):
-        return re.sub(pat, rf'\1"{escaped}"', text, count=1)
+    escaped = lua_escape(val)
+    pat = rf'^([ \t]*{re.escape(key)}\s*=\s*)"[^"]*"'
+    if re.search(pat, text, re.MULTILINE):
+        return re.sub(pat, rf'\1"{escaped}"', text, count=1, flags=re.MULTILINE)
     return text
 
 
 def replace_lua_raw(text, key, raw_val):
-    pat = rf'(\b{re.escape(key)}\s*=\s*)(?:-?\d+(?:\.\d+)?|true|false)'
-    if re.search(pat, text):
-        return re.sub(pat, rf'\1{raw_val}', text, count=1)
+    pat = rf'^([ \t]*{re.escape(key)}\s*=\s*)(?:-?\d+(?:\.\d+)?|true|false)'
+    if re.search(pat, text, re.MULTILINE):
+        return re.sub(pat, rf'\1{raw_val}', text, count=1, flags=re.MULTILINE)
     return text
 
 
@@ -181,15 +201,15 @@ def _parse_lua_monitor_opts(lua, name):
 
 
 def upsert_lua_kb_str(text, key, val):
-    escaped = val.replace("\\", "\\\\").replace('"', '\\"')
-    pat = rf'(\b{re.escape(key)}\s*=\s*)"[^"]*"'
-    if re.search(pat, text):
-        return re.sub(pat, rf'\1"{escaped}"', text, count=1)
-    m = re.search(r'(input\s*=\s*\{\s*\n)', text)
+    escaped = lua_escape(val)
+    pat = rf'^([ \t]*{re.escape(key)}\s*=\s*)"[^"]*"'
+    if re.search(pat, text, re.MULTILINE):
+        return re.sub(pat, rf'\1"{escaped}"', text, count=1, flags=re.MULTILINE)
+    m = re.search(r'^[ \t]*input\s*=\s*\{[^\n]*\n', text, re.MULTILINE)
     if m:
-        ins = m.end(1)
+        ins = m.end(0)
         return text[:ins] + f'        {key} = "{escaped}",\n' + text[ins:]
-    return text
+    return text.rstrip() + f'\n\nhl.config({{\n    input = {{\n        {key} = "{escaped}",\n    }},\n}})\n'
 
 
 def get_xkb_catalog():
@@ -305,21 +325,26 @@ def get_info(include_catalog=False):
         })
 
     active_layout = "English (US)"
-    for kb in devs_raw.get("keyboards", []):
-        if kb.get("main"):
-            active_layout = kb.get("active_keymap", active_layout)
-            break
+    keyboards = devs_raw.get("keyboards", [])
+    main_kb = next((kb for kb in keyboards if kb.get("main") and kb.get("active_keymap")), None)
+    if main_kb is None:
+        main_kb = next((kb for kb in keyboards if kb.get("active_keymap")), None)
+    if main_kb is not None:
+        active_layout = main_kb.get("active_keymap", active_layout)
 
     if lua_mode:
+        lua_lay = extract_lua_str(lua, "kb_layout", None)
+        lua_var = extract_lua_str(lua, "kb_variant", None)
+        lua_opt = extract_lua_str(lua, "kb_options", None)
         kb_info = {
-            "layout": extract_lua_str(lua, "kb_layout", "us"),
-            "variant": extract_lua_str(lua, "kb_variant", ""),
-            "options": extract_lua_str(lua, "kb_options", ""),
+            "layout": lua_lay if lua_lay is not None else str(get_hypr_opt("input:kb_layout", "us") or "us"),
+            "variant": lua_var if lua_var is not None else str(get_hypr_opt("input:kb_variant", "") or ""),
+            "options": lua_opt if lua_opt is not None else str(get_hypr_opt("input:kb_options", "") or ""),
             "activeLayout": active_layout,
         }
         input_info = {
-            "sensitivity": extract_lua_num(lua, "sensitivity", 0.0),
-            "naturalScroll": extract_lua_bool(lua, "natural_scroll", False),
+            "sensitivity": extract_lua_num(lua, "sensitivity", get_hypr_opt("input:sensitivity", 0.0)),
+            "naturalScroll": extract_lua_bool(lua, "natural_scroll", bool(get_hypr_opt("input:natural_scroll", 0))),
         }
     else:
         ov = load_conf_overrides()
@@ -354,13 +379,19 @@ def get_info(include_catalog=False):
 def set_keyboard(layout, variant, options):
     if is_lua_mode():
         lua = read_hypr_lua()
-        if not lua:
-            get_info()
-            return
-        lua = upsert_lua_kb_str(lua, "kb_layout", layout)
-        lua = upsert_lua_kb_str(lua, "kb_variant", variant)
-        lua = upsert_lua_kb_str(lua, "kb_options", options)
-        write_hypr_lua(lua)
+        if lua:
+            lua = upsert_lua_kb_str(lua, "kb_layout", layout)
+            lua = upsert_lua_kb_str(lua, "kb_variant", variant)
+            lua = upsert_lua_kb_str(lua, "kb_options", options)
+            write_hypr_lua(lua)
+        expr = (
+            f'hl.config({{ input = {{ '
+            f'kb_layout = "{lua_escape(layout)}", '
+            f'kb_variant = "{lua_escape(variant)}", '
+            f'kb_options = "{lua_escape(options)}" '
+            f'}} }})'
+        )
+        subprocess.run(["hyprctl", "eval", expr], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2.0)
     else:
         ov = load_conf_overrides()
         ov.setdefault("keyboard", {})
@@ -368,6 +399,9 @@ def set_keyboard(layout, variant, options):
         ov["keyboard"]["variant"] = variant
         ov["keyboard"]["options"] = options
         write_conf_overrides(ov)
+        for opt_name, opt_val in (("input:kb_layout", layout), ("input:kb_variant", variant), ("input:kb_options", options)):
+            subprocess.run(["hyprctl", "keyword", opt_name, opt_val], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2.0)
+    time.sleep(0.08)
     subprocess.run(["hyprctl", "switchxkblayout", "all", "0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2.0)
     get_info()
 
@@ -378,27 +412,31 @@ def set_input(sensitivity, natural_scroll):
     except Exception:
         sens_val = 0.0
     nat_bool = str(natural_scroll).lower() in ("true", "1", "yes")
+    nat_str = "true" if nat_bool else "false"
     if is_lua_mode():
         lua = read_hypr_lua()
-        if not lua:
-            get_info()
-            return
-        nat_str = "true" if nat_bool else "false"
-        input_idx = lua.find("input = {")
-        if input_idx != -1:
-            end_idx = lua.find("})", input_idx)
-            if end_idx != -1:
-                block = lua[input_idx:end_idx]
-                block = replace_lua_raw(block, "sensitivity", str(sens_val))
-                block = replace_lua_raw(block, "natural_scroll", nat_str)
-                lua = lua[:input_idx] + block + lua[end_idx:]
-        write_hypr_lua(lua)
+        if lua:
+            input_idx = lua.find("input = {")
+            if input_idx != -1:
+                end_idx = lua.find("})", input_idx)
+                if end_idx != -1:
+                    block = lua[input_idx:end_idx]
+                    block = replace_lua_raw(block, "sensitivity", str(sens_val))
+                    block = replace_lua_raw(block, "natural_scroll", nat_str)
+                    lua = lua[:input_idx] + block + lua[end_idx:]
+            else:
+                lua = lua.rstrip() + f"\n\nhl.config({{\n    input = {{\n        sensitivity = {sens_val},\n        touchpad = {{ natural_scroll = {nat_str} }},\n    }},\n}})\n"
+            write_hypr_lua(lua)
+        expr = f"hl.config({{ input = {{ sensitivity = {sens_val}, touchpad = {{ natural_scroll = {nat_str} }} }} }})"
+        subprocess.run(["hyprctl", "eval", expr], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2.0)
     else:
         ov = load_conf_overrides()
         ov.setdefault("input", {})
         ov["input"]["sensitivity"] = sens_val
         ov["input"]["naturalScroll"] = nat_bool
         write_conf_overrides(ov)
+        subprocess.run(["hyprctl", "keyword", "input:sensitivity", str(sens_val)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2.0)
+        subprocess.run(["hyprctl", "keyword", "input:touchpad:natural_scroll", nat_str], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2.0)
     get_info()
 
 
@@ -618,7 +656,7 @@ def restore_monitors(items_json):
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "info"
     if cmd == "set_keyboard":
-        lay = sys.argv[2] if len(sys.argv) > 2 else "gb,us"
+        lay = sys.argv[2] if len(sys.argv) > 2 else "us"
         var = sys.argv[3] if len(sys.argv) > 3 else ""
         opt = sys.argv[4] if len(sys.argv) > 4 else ""
         set_keyboard(lay, var, opt)

@@ -1,4 +1,4 @@
-# 🌈 ChromaShell `v0.3.1`
+# 🌈 ChromaShell `v0.3.1.1`
 
 A complete, ultra-fluid, morphing desktop environment designed for **Hyprland** using **Quickshell** and **Qt Quick / QML**.
 

@@ -8,6 +8,21 @@ local mainMod = "SUPER"
 local home = os.getenv("HOME") or ""
 local qsScript = home .. "/.config/quickshell/scripts/"
 
+-- Unbind any conflicting default/existing binding on the same shortcut before registering ours
+local function rebind(combo, dsp, opts)
+    pcall(hl.unbind, combo)
+    local lowered = combo:gsub("(%+ )([A-Z])$", function(prefix, ch)
+        return prefix .. ch:lower()
+    end)
+    if lowered ~= combo then
+        pcall(hl.unbind, lowered)
+    end
+    if opts ~= nil then
+        return hl.bind(combo, dsp, opts)
+    end
+    return hl.bind(combo, dsp)
+end
+
 -- ------------------------------------------------------------------------------
 -- 1. AUTOSTART & APPEARANCE
 -- ------------------------------------------------------------------------------
@@ -54,80 +69,80 @@ hl.config({
 for i = 1, 10 do
     local key = i % 10
     -- Switch workspace
-    hl.bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = i }))
+    rebind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = i }))
     -- Switch workspace group (group 0/1 = 1-10, group 2 = 11-20, etc.)
-    hl.bind("CTRL + " .. mainMod .. " + " .. key, hl.dsp.focus({ workspace = (i == 10 and 10 or i) * 10 - 9 }))
+    rebind("CTRL + " .. mainMod .. " + " .. key, hl.dsp.focus({ workspace = (i == 10 and 10 or i) * 10 - 9 }))
     -- Move window to workspace
-    hl.bind(mainMod .. " + ALT + " .. key, hl.dsp.window.move({ workspace = i }))
+    rebind(mainMod .. " + ALT + " .. key, hl.dsp.window.move({ workspace = i }))
     -- Move window to workspace silently
-    hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i, silent = true }))
+    rebind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i, silent = true }))
     -- Move window to workspace group
-    hl.bind("CTRL + " .. mainMod .. " + ALT + " .. key, hl.dsp.window.move({ workspace = (i == 10 and 10 or i) * 10 - 9 }))
+    rebind("CTRL + " .. mainMod .. " + ALT + " .. key, hl.dsp.window.move({ workspace = (i == 10 and 10 or i) * 10 - 9 }))
 end
 
 -- Next Workspace
-hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
-hl.bind("CTRL + " .. mainMod .. " + right", hl.dsp.focus({ workspace = "e+1" }))
-hl.bind(mainMod .. " + Next", hl.dsp.focus({ workspace = "e+1" }))
+rebind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
+rebind("CTRL + " .. mainMod .. " + right", hl.dsp.focus({ workspace = "e+1" }))
+rebind(mainMod .. " + Next", hl.dsp.focus({ workspace = "e+1" }))
 
 -- Previous Workspace
-hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
-hl.bind("CTRL + " .. mainMod .. " + left", hl.dsp.focus({ workspace = "e-1" }))
-hl.bind(mainMod .. " + Prior", hl.dsp.focus({ workspace = "e-1" }))
+rebind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
+rebind("CTRL + " .. mainMod .. " + left", hl.dsp.focus({ workspace = "e-1" }))
+rebind(mainMod .. " + Prior", hl.dsp.focus({ workspace = "e-1" }))
 
 -- Next Workspace Group
-hl.bind("CTRL + " .. mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "+10" }))
+rebind("CTRL + " .. mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "+10" }))
 -- Previous Workspace Group
-hl.bind("CTRL + " .. mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "-10" }))
+rebind("CTRL + " .. mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "-10" }))
 
 -- Move Window to Next / Prev Workspace
-hl.bind(mainMod .. " + ALT + mouse_down", hl.dsp.window.move({ workspace = "e+1" }))
-hl.bind(mainMod .. " + ALT + Next", hl.dsp.window.move({ workspace = "e+1" }))
-hl.bind("CTRL + " .. mainMod .. " + SHIFT + right", hl.dsp.window.move({ workspace = "e+1" }))
+rebind(mainMod .. " + ALT + mouse_down", hl.dsp.window.move({ workspace = "e+1" }))
+rebind(mainMod .. " + ALT + Next", hl.dsp.window.move({ workspace = "e+1" }))
+rebind("CTRL + " .. mainMod .. " + SHIFT + right", hl.dsp.window.move({ workspace = "e+1" }))
 
-hl.bind(mainMod .. " + ALT + mouse_up", hl.dsp.window.move({ workspace = "e-1" }))
-hl.bind(mainMod .. " + ALT + Prior", hl.dsp.window.move({ workspace = "e-1" }))
-hl.bind("CTRL + " .. mainMod .. " + SHIFT + left", hl.dsp.window.move({ workspace = "e-1" }))
+rebind(mainMod .. " + ALT + mouse_up", hl.dsp.window.move({ workspace = "e-1" }))
+rebind(mainMod .. " + ALT + Prior", hl.dsp.window.move({ workspace = "e-1" }))
+rebind("CTRL + " .. mainMod .. " + SHIFT + left", hl.dsp.window.move({ workspace = "e-1" }))
 
 -- Move Window to / from Special Workspace
-hl.bind(mainMod .. " + ALT + S", hl.dsp.window.move({ workspace = "special:magic" }))
-hl.bind("CTRL + " .. mainMod .. " + SHIFT + up", hl.dsp.window.move({ workspace = "special:magic" }))
-hl.bind("CTRL + " .. mainMod .. " + SHIFT + down", hl.dsp.window.move({ workspace = "e" }))
+rebind(mainMod .. " + ALT + S", hl.dsp.window.move({ workspace = "special:magic" }))
+rebind("CTRL + " .. mainMod .. " + SHIFT + up", hl.dsp.window.move({ workspace = "special:magic" }))
+rebind("CTRL + " .. mainMod .. " + SHIFT + down", hl.dsp.window.move({ workspace = "e" }))
 
 -- Show / Hide Desktop (Win+D style single-hand toggle)
-hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(qsScript .. "show-desktop.sh"))
+rebind(mainMod .. " + A", hl.dsp.exec_cmd(qsScript .. "show-desktop.sh"))
 
 -- ------------------------------------------------------------------------------
 -- 3. SPECIAL WORKSPACES (SCRATCHPADS)
 -- ------------------------------------------------------------------------------
-hl.bind(mainMod .. " + S", hl.dsp.exec_cmd(qsScript .. "scratchpad.sh magic"))
-hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(qsScript .. "scratchpad.sh sysmon"))
-hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(qsScript .. "scratchpad.sh music"))
-hl.bind(mainMod .. " + D", hl.dsp.exec_cmd(qsScript .. "scratchpad.sh comm"))
+rebind(mainMod .. " + S", hl.dsp.exec_cmd(qsScript .. "scratchpad.sh magic"))
+rebind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(qsScript .. "scratchpad.sh sysmon"))
+rebind(mainMod .. " + M", hl.dsp.exec_cmd(qsScript .. "scratchpad.sh music"))
+rebind(mainMod .. " + D", hl.dsp.exec_cmd(qsScript .. "scratchpad.sh comm"))
 
 -- ------------------------------------------------------------------------------
 -- 4. WINDOW ACTIONS & SIZING
 -- ------------------------------------------------------------------------------
-hl.bind(mainMod .. " + Q", hl.dsp.window.close())
-hl.bind(mainMod .. " + ALT + SPACE", hl.dsp.window.float({ action = "toggle" }))
-hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
-hl.bind(mainMod .. " + ALT + F", hl.dsp.exec_raw("fullscreen 1"))
-hl.bind(mainMod .. " + ALT + backslash", hl.dsp.exec_raw("setfloating; pin; resizeactive exact 480 270"))
-hl.bind(mainMod .. " + P", hl.dsp.window.pin())
-hl.bind(mainMod .. " + Z", hl.dsp.exec_raw("submap move"))
-hl.bind(mainMod .. " + X", hl.dsp.exec_raw("submap resize"))
-hl.bind("CTRL + " .. mainMod .. " + backslash", hl.dsp.exec_raw("centerwindow"))
-hl.bind("CTRL + " .. mainMod .. " + ALT + backslash", hl.dsp.exec_raw("resizeactive exact 50% 50%; centerwindow"))
+rebind(mainMod .. " + Q", hl.dsp.window.close())
+rebind(mainMod .. " + ALT + SPACE", hl.dsp.window.float({ action = "toggle" }))
+rebind(mainMod .. " + F", hl.dsp.window.fullscreen())
+rebind(mainMod .. " + ALT + F", hl.dsp.exec_raw("fullscreen 1"))
+rebind(mainMod .. " + ALT + backslash", hl.dsp.exec_raw("setfloating; pin; resizeactive exact 480 270"))
+rebind(mainMod .. " + P", hl.dsp.window.pin())
+rebind(mainMod .. " + Z", hl.dsp.exec_raw("submap move"))
+rebind(mainMod .. " + X", hl.dsp.exec_raw("submap resize"))
+rebind("CTRL + " .. mainMod .. " + backslash", hl.dsp.exec_raw("centerwindow"))
+rebind("CTRL + " .. mainMod .. " + ALT + backslash", hl.dsp.exec_raw("resizeactive exact 50% 50%; centerwindow"))
 
 -- Incremental width/height adjustments
-hl.bind(mainMod .. " + minus", hl.dsp.exec_raw("resizeactive -40 0"), { repeating = true })
-hl.bind(mainMod .. " + ALT + left", hl.dsp.exec_raw("resizeactive -40 0"), { repeating = true })
-hl.bind(mainMod .. " + equal", hl.dsp.exec_raw("resizeactive 40 0"), { repeating = true })
-hl.bind(mainMod .. " + ALT + right", hl.dsp.exec_raw("resizeactive 40 0"), { repeating = true })
-hl.bind(mainMod .. " + SHIFT + minus", hl.dsp.exec_raw("resizeactive 0 -40"), { repeating = true })
-hl.bind(mainMod .. " + ALT + up", hl.dsp.exec_raw("resizeactive 0 -40"), { repeating = true })
-hl.bind(mainMod .. " + SHIFT + equal", hl.dsp.exec_raw("resizeactive 0 40"), { repeating = true })
-hl.bind(mainMod .. " + ALT + down", hl.dsp.exec_raw("resizeactive 0 40"), { repeating = true })
+rebind(mainMod .. " + minus", hl.dsp.exec_raw("resizeactive -40 0"), { repeating = true })
+rebind(mainMod .. " + ALT + left", hl.dsp.exec_raw("resizeactive -40 0"), { repeating = true })
+rebind(mainMod .. " + equal", hl.dsp.exec_raw("resizeactive 40 0"), { repeating = true })
+rebind(mainMod .. " + ALT + right", hl.dsp.exec_raw("resizeactive 40 0"), { repeating = true })
+rebind(mainMod .. " + SHIFT + minus", hl.dsp.exec_raw("resizeactive 0 -40"), { repeating = true })
+rebind(mainMod .. " + ALT + up", hl.dsp.exec_raw("resizeactive 0 -40"), { repeating = true })
+rebind(mainMod .. " + SHIFT + equal", hl.dsp.exec_raw("resizeactive 0 40"), { repeating = true })
+rebind(mainMod .. " + ALT + down", hl.dsp.exec_raw("resizeactive 0 40"), { repeating = true })
 
 -- Submaps for Resize Mode and Move Mode
 hl.define_submap("resize", function()
@@ -149,81 +164,81 @@ hl.define_submap("move", function()
 end)
 
 -- Directional focus
-hl.bind(mainMod .. " + left",  hl.dsp.focus({ direction = "left" }))
-hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
-hl.bind(mainMod .. " + up",    hl.dsp.focus({ direction = "up" }))
-hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "down" }))
+rebind(mainMod .. " + left",  hl.dsp.focus({ direction = "left" }))
+rebind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
+rebind(mainMod .. " + up",    hl.dsp.focus({ direction = "up" }))
+rebind(mainMod .. " + down",  hl.dsp.focus({ direction = "down" }))
 
 -- Mouse drag window moving/resizing
-hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
-hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+rebind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
+rebind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
 -- ------------------------------------------------------------------------------
 -- 5. WINDOW GROUPS / TABBING
 -- ------------------------------------------------------------------------------
-hl.bind("ALT + Tab", hl.dsp.exec_raw("cyclenext"))
-hl.bind("SHIFT + ALT + Tab", hl.dsp.exec_raw("cyclenext prev"))
-hl.bind("CTRL + ALT + Tab", hl.dsp.exec_raw("changegroupactive f"))
-hl.bind("CTRL + SHIFT + ALT + Tab", hl.dsp.exec_raw("changegroupactive b"))
-hl.bind(mainMod .. " + comma", hl.dsp.exec_raw("togglegroup"))
-hl.bind(mainMod .. " + U", hl.dsp.exec_raw("moveoutofgroup"))
-hl.bind(mainMod .. " + SHIFT + comma", hl.dsp.exec_raw("lockactivegroup toggle"))
+rebind("ALT + Tab", hl.dsp.exec_raw("cyclenext"))
+rebind("SHIFT + ALT + Tab", hl.dsp.exec_raw("cyclenext prev"))
+rebind("CTRL + ALT + Tab", hl.dsp.exec_raw("changegroupactive f"))
+rebind("CTRL + SHIFT + ALT + Tab", hl.dsp.exec_raw("changegroupactive b"))
+rebind(mainMod .. " + comma", hl.dsp.exec_raw("togglegroup"))
+rebind(mainMod .. " + U", hl.dsp.exec_raw("moveoutofgroup"))
+rebind(mainMod .. " + SHIFT + comma", hl.dsp.exec_raw("lockactivegroup toggle"))
 
 -- ------------------------------------------------------------------------------
 -- 6. APPLICATIONS
 -- ------------------------------------------------------------------------------
-hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("kitty"))
-hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("firefox"))
-hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("codium"))
-hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("thunar"))
-hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd("pwvucontrol"))
+rebind(mainMod .. " + T", hl.dsp.exec_cmd("kitty"))
+rebind(mainMod .. " + W", hl.dsp.exec_cmd("firefox"))
+rebind(mainMod .. " + C", hl.dsp.exec_cmd("codium"))
+rebind(mainMod .. " + E", hl.dsp.exec_cmd("thunar"))
+rebind("CTRL + ALT + V", hl.dsp.exec_cmd("pwvucontrol"))
 
 -- ------------------------------------------------------------------------------
 -- 7. UTILITIES & CAPTURE
 -- ------------------------------------------------------------------------------
-hl.bind("Print", hl.dsp.exec_cmd(qsScript .. "screenshot.sh --fullscreen"))
-hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(qsScript .. "screenshot.sh --region"))
+rebind("Print", hl.dsp.exec_cmd(qsScript .. "screenshot.sh --fullscreen"))
+rebind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(qsScript .. "screenshot.sh --region"))
 
 -- ------------------------------------------------------------------------------
 -- 8. MEDIA & AUDIO
 -- ------------------------------------------------------------------------------
-hl.bind("CTRL + " .. mainMod .. " + SPACE", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh play-pause"))
-hl.bind("CTRL + " .. mainMod .. " + equal", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh next"))
-hl.bind("CTRL + " .. mainMod .. " + minus", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh previous"))
-hl.bind("CTRL + " .. mainMod .. " + BackSpace", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh stop"))
-hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"))
+rebind("CTRL + " .. mainMod .. " + SPACE", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh play-pause"))
+rebind("CTRL + " .. mainMod .. " + equal", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh next"))
+rebind("CTRL + " .. mainMod .. " + minus", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh previous"))
+rebind("CTRL + " .. mainMod .. " + BackSpace", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh stop"))
+rebind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"))
 
 -- Hardware multimedia keys
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),      { locked = true, repeating = true })
-hl.bind("XF86AudioMute",        hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),     { locked = true, repeating = true })
-hl.bind("XF86AudioMicMute",     hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),   { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessUp",  hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"),                  { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown",hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"),                  { locked = true, repeating = true })
-hl.bind("XF86AudioNext",  hl.dsp.exec_cmd(qsScript .. "media_ctl.sh next"),       { locked = true })
-hl.bind("XF86AudioPause", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh play-pause"), { locked = true })
-hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd(qsScript .. "media_ctl.sh play-pause"), { locked = true })
-hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd(qsScript .. "media_ctl.sh previous"),   { locked = true })
+rebind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
+rebind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),      { locked = true, repeating = true })
+rebind("XF86AudioMute",        hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),     { locked = true, repeating = true })
+rebind("XF86AudioMicMute",     hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),   { locked = true, repeating = true })
+rebind("XF86MonBrightnessUp",  hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"),                  { locked = true, repeating = true })
+rebind("XF86MonBrightnessDown",hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"),                  { locked = true, repeating = true })
+rebind("XF86AudioNext",  hl.dsp.exec_cmd(qsScript .. "media_ctl.sh next"),       { locked = true })
+rebind("XF86AudioPause", hl.dsp.exec_cmd(qsScript .. "media_ctl.sh play-pause"), { locked = true })
+rebind("XF86AudioPlay",  hl.dsp.exec_cmd(qsScript .. "media_ctl.sh play-pause"), { locked = true })
+rebind("XF86AudioPrev",  hl.dsp.exec_cmd(qsScript .. "media_ctl.sh previous"),   { locked = true })
 
 -- ------------------------------------------------------------------------------
 -- 9. CLIPBOARD & EMOJIS
 -- ------------------------------------------------------------------------------
-hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleClipboard"))
-hl.bind(mainMod .. " + ALT + V", hl.dsp.exec_cmd(qsScript .. "clipboard.sh delete-latest"))
-hl.bind("CTRL + SHIFT + ALT + V", hl.dsp.exec_cmd(qsScript .. "clipboard.sh paste-latest"))
-hl.bind(mainMod .. " + period", hl.dsp.exec_cmd("command -v rofi >/dev/null 2>&1 && rofi -show emoji || (command -v wofi >/dev/null 2>&1 && wofi --show dmenu)"))
+rebind(mainMod .. " + V", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleClipboard"))
+rebind(mainMod .. " + ALT + V", hl.dsp.exec_cmd(qsScript .. "clipboard.sh delete-latest"))
+rebind("CTRL + SHIFT + ALT + V", hl.dsp.exec_cmd(qsScript .. "clipboard.sh paste-latest"))
+rebind(mainMod .. " + period", hl.dsp.exec_cmd("command -v rofi >/dev/null 2>&1 && rofi -show emoji || (command -v wofi >/dev/null 2>&1 && wofi --show dmenu)"))
 
 -- ------------------------------------------------------------------------------
 -- 10. SYSTEM & INTERFACE
 -- ------------------------------------------------------------------------------
-hl.bind(mainMod .. " + SUPER_L", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleLauncher"), { release = true })
-hl.bind(mainMod .. " + SUPER_R", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleLauncher"), { release = true })
-hl.bind(mainMod .. " + SPACE",   hl.dsp.exec_cmd("quickshell ipc -n call shell nextKeyboardLayout"), { locked = true })
-hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd("quickshell ipc -n call shell togglePowerOsd"))
-hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleControlCenter"))
-hl.bind("CTRL + ALT + C", hl.dsp.exec_cmd("quickshell ipc -n call shell clearNotifs"))
-hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("quickshell ipc -n call shell lock"))
-hl.bind(mainMod .. " + ALT + L", hl.dsp.exec_cmd("quickshell ipc -n call shell lock"))
-hl.bind(mainMod .. " + SHIFT + L", hl.dsp.exec_cmd("systemctl suspend"))
-hl.bind(mainMod .. " + slash",    hl.dsp.exec_cmd("quickshell ipc -n call shell toggleCheatSheet"))
-hl.bind(mainMod .. " + question", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleCheatSheet"))
+rebind(mainMod .. " + SUPER_L", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleLauncher"), { release = true })
+rebind(mainMod .. " + SUPER_R", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleLauncher"), { release = true })
+rebind(mainMod .. " + SPACE",   hl.dsp.exec_cmd("quickshell ipc -n call shell nextKeyboardLayout"), { locked = true })
+rebind("CTRL + ALT + Delete", hl.dsp.exec_cmd("quickshell ipc -n call shell togglePowerOsd"))
+rebind(mainMod .. " + N", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleControlCenter"))
+rebind("CTRL + ALT + C", hl.dsp.exec_cmd("quickshell ipc -n call shell clearNotifs"))
+rebind(mainMod .. " + L", hl.dsp.exec_cmd("quickshell ipc -n call shell lock"))
+rebind(mainMod .. " + ALT + L", hl.dsp.exec_cmd("quickshell ipc -n call shell lock"))
+rebind(mainMod .. " + SHIFT + L", hl.dsp.exec_cmd("systemctl suspend"))
+rebind(mainMod .. " + slash",    hl.dsp.exec_cmd("quickshell ipc -n call shell toggleCheatSheet"))
+rebind(mainMod .. " + question", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleCheatSheet"))

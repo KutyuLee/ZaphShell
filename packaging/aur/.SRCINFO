@@ -1,6 +1,6 @@
 pkgbase = chromashell-git
 	pkgdesc = Fluid morphing desktop environment for Hyprland built with Quickshell and Liquid Glass shaders
-	pkgver = 0.3.1.r0.g0000000
+	pkgver = 0.3.1.1.r0.g0000000
 	pkgrel = 1
 	url = https://github.com/Davidgaming1358/ChromaShell
 	install = chromashell.install
