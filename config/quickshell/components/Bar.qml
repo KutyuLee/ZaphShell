@@ -567,6 +567,7 @@ PanelWindow {
                 readonly property bool weatherSkyActive: root.ownsActivePanel && (ShellState.weatherOpen || ShellState.weatherSkyProgress > 0.005)
                 readonly property bool anyRightPillHighlighted: systemTrayWidget.isPillHighlighted
                     || weatherWidget.isPillHighlighted
+                    || clockWidget.isPillHighlighted
                     || notifBtn.isPillHighlighted
                 readonly property var liquidSource: barCap.textureSource
                 readonly property bool liquidSourceReady: barCap.ready
@@ -602,7 +603,7 @@ PanelWindow {
                         skyOriginY: -Theme.barTopGap
                     }
                     BatteryWidget {}
-                    ClockWidget {}
+                    ClockWidget { id: clockWidget; targetScreen: root.screen; ownsActivePanel: root.ownsActivePanel }
                     NotificationButton { id: notifBtn; targetScreen: root.screen; ownsActivePanel: root.ownsActivePanel }
                 }
             }

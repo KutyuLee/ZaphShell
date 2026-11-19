@@ -113,12 +113,12 @@ void main() {
         }
     }
 
-    // Preserve crystal-clear vivid color; only lightly soften near-pure-white surfaces (bgLum > 0.76)
+    // Preserve crystal-clear vivid color on dark backgrounds; progressively smoke bright areas for crisp text legibility
     float bgLum = dot(refrCol.rgb, vec3(0.2126, 0.7152, 0.0722));
     float darkThemeMask = 1.0 - smoothstep(0.35, 0.65, dot(uTint.rgb, vec3(0.299, 0.587, 0.114)));
-    float brightBg = smoothstep(0.76, 0.99, bgLum) * darkThemeMask;
-    vec3 smokedColor = refrCol.rgb * mix(1.03, 0.90, brightBg);
-    vec3 smokedBase = mix(smokedColor, vec3(0.14, 0.16, 0.20), brightBg * 0.04);
+    float brightBg = smoothstep(0.42, 0.92, bgLum) * darkThemeMask;
+    vec3 smokedColor = refrCol.rgb * mix(1.02, 0.56, brightBg);
+    vec3 smokedBase = mix(smokedColor, vec3(0.08, 0.10, 0.13), brightBg * 0.36);
     vec3 glassRgb = mix(smokedBase, uTint.rgb, uTint.a);
 
     // Subtle static top-left glass sheen (zero moving spotlights or idle repaints)

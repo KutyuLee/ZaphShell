@@ -39,6 +39,17 @@ WMO_MAP = {
     99: ("󰙾", "Heavy T-Storm"),
 }
 
+WMO_NIGHT_OVERRIDE = {
+    0: ("󰖔", "Clear Night"),
+    1: ("󰖔", "Mostly Clear"),
+    2: ("󰼱", "Partly Cloudy"),
+}
+
+def map_wmo(code, is_day=True):
+    if not is_day and code in WMO_NIGHT_OVERRIDE:
+        return WMO_NIGHT_OVERRIDE[code]
+    return WMO_MAP.get(code, ("󰼱", "Partly Cloudy") if not is_day else ("󰖕", "Partly Cloudy"))
+
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 def fetch_json(url, timeout=4.0):
@@ -50,7 +61,7 @@ try:
     if not force and os.path.isfile(cache_file) and (time.time() - os.path.getmtime(cache_file)) < 600:
         with open(cache_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-            if "hourly" in data and len(data.get("forecast", [])) > 0 and "date" in data["forecast"][0]:
+            if "isDay" in data and "hourly" in data and len(data.get("forecast", [])) > 0 and "date" in data["forecast"][0]:
                 print(json.dumps(data))
                 sys.exit(0)
 
@@ -69,8 +80,8 @@ try:
 
     url = (
         f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
-        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m"
-        "&hourly=temperature_2m,weather_code"
+        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,is_day"
+        "&hourly=temperature_2m,weather_code,is_day"
         "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"
         "&timezone=auto&forecast_days=5"
     )
@@ -79,8 +90,10 @@ try:
     hourly_raw = raw.get("hourly", {})
     daily = raw.get("daily", {})
 
+    local_hour = time.localtime().tm_hour
+    is_day = bool(cur.get("is_day", 1 if 6 <= local_hour < 20 else 0))
     code = int(cur.get("weather_code", 0))
-    icon, desc = WMO_MAP.get(code, ("󰖕", "Partly Cloudy"))
+    icon, desc = map_wmo(code, is_day)
     temp = round(float(cur.get("temperature_2m", 18)))
     feels = round(float(cur.get("apparent_temperature", temp)))
     hum = round(float(cur.get("relative_humidity_2m", 55)))
@@ -90,6 +103,7 @@ try:
     h_times = hourly_raw.get("time", [])
     h_temps = hourly_raw.get("temperature_2m", [])
     h_codes = hourly_raw.get("weather_code", [])
+    h_is_day = hourly_raw.get("is_day", [])
     now_prefix = time.strftime("%Y-%m-%dT%H:")
     start_idx = 0
     for idx, t_str in enumerate(h_times):
@@ -105,7 +119,8 @@ try:
             h_label = "Now" if k == 0 else t_part
             h_temp = temp if k == 0 else round(float(h_temps[idx]))
             h_code = code if k == 0 else int(h_codes[idx])
-            h_icon, h_desc = WMO_MAP.get(h_code, ("󰖐", "Cloudy"))
+            slot_is_day = is_day if k == 0 else (bool(h_is_day[idx]) if idx < len(h_is_day) else (6 <= ((local_hour + k) % 24) < 20))
+            h_icon, h_desc = map_wmo(h_code, slot_is_day)
             hourly.append({
                 "time": h_label,
                 "icon": h_icon,
@@ -165,6 +180,7 @@ try:
         "wind": f"{wind} km/h",
         "icon": icon,
         "desc": desc,
+        "isDay": is_day,
         "high": hi_today,
         "low": lo_today,
         "hourly": hourly,
@@ -211,6 +227,7 @@ except Exception:
             "wind": "-- km/h",
             "icon": "󰖐",
             "desc": "Offline",
+            "isDay": 6 <= now_tm.tm_hour < 20,
             "high": "--°",
             "low": "--°",
             "hourly": fallback_hourly,

@@ -2376,6 +2376,78 @@ IslandFloatPanel {
                                     onToggled: ShellState.showDebugButton = !ShellState.showDebugButton
                                 }
 
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 1
+                                        Text {
+                                            text: "Glass Capture Exclusions"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 11
+                                            font.weight: Font.DemiBold
+                                            color: Theme.text
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: "Skip live window capture for apps that crash or flicker under Liquid Glass (comma-separated)"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 9
+                                            color: Theme.subtext
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+
+                                        Rectangle {
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: 28
+                                            radius: 8
+                                            color: Theme.glassSurfaceActive
+                                            border.color: glassExclIn.activeFocus ? Theme.accent : Theme.glassBorder
+                                            border.width: 1
+
+                                            TextInput {
+                                                id: glassExclIn
+                                                anchors.fill: parent
+                                                anchors.leftMargin: 8
+                                                anchors.rightMargin: 8
+                                                verticalAlignment: TextInput.AlignVCenter
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 10
+                                                color: Theme.text
+                                                text: ShellState.glassExcludedApps
+                                                clip: true
+                                                onEditingFinished: ShellState.glassExcludedApps = text
+                                                Keys.onReturnPressed: ShellState.glassExcludedApps = text
+                                            }
+
+                                            Text {
+                                                anchors.left: parent.left
+                                                anchors.leftMargin: 8
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: "e.g. virtualbox, obs"
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 10
+                                                color: Theme.textDim
+                                                visible: !glassExclIn.activeFocus && glassExclIn.text.length === 0
+                                            }
+                                        }
+
+                                        ActionPill {
+                                            label: "Apply"
+                                            implicitHeight: 28
+                                            active: glassExclIn.text !== ShellState.glassExcludedApps
+                                            onClicked: ShellState.glassExcludedApps = glassExclIn.text
+                                        }
+                                    }
+                                }
+
                                 Item { Layout.fillHeight: true }
                             }
                         }

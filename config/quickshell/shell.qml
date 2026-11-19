@@ -260,6 +260,12 @@ ShellRoot {
         barWindow: root.activeBarWindow
     }
 
+    // Top-Right Liquid Morphing Calendar Dropdown (active monitor)
+    CalendarPanel {
+        screen: root.activeScreen
+        barWindow: root.activeBarWindow
+    }
+
     // Top-Left Weather State Debug Dropdown (active monitor)
     WeatherDebugPanel {
         screen: root.activeScreen

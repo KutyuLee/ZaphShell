@@ -240,5 +240,6 @@ rebind("CTRL + ALT + C", hl.dsp.exec_cmd("quickshell ipc -n call shell clearNoti
 rebind(mainMod .. " + L", hl.dsp.exec_cmd("quickshell ipc -n call shell lock"))
 rebind(mainMod .. " + ALT + L", hl.dsp.exec_cmd("quickshell ipc -n call shell lock"))
 rebind(mainMod .. " + SHIFT + L", hl.dsp.exec_cmd(qsScript .. "power-action.sh suspend"))
+rebind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd(qsScript .. "restart-shell.sh"))
 rebind(mainMod .. " + slash",    hl.dsp.exec_cmd("quickshell ipc -n call shell toggleCheatSheet"))
 rebind(mainMod .. " + question", hl.dsp.exec_cmd("quickshell ipc -n call shell toggleCheatSheet"))

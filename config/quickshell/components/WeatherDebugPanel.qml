@@ -251,6 +251,68 @@ PanelWindow {
                         color: Theme.glassBorder
                     }
 
+                    // Day / Night / Auto sky override row
+                    RowLayout {
+                        width: parent.width
+                        height: 28
+                        spacing: 4
+
+                        Repeater {
+                            model: [
+                                { key: "",      label: "Auto" },
+                                { key: "day",   label: "󰖙 Day" },
+                                { key: "night", label: "󰖔 Night" }
+                            ]
+
+                            delegate: Rectangle {
+                                id: timePill
+                                required property var modelData
+                                readonly property bool isSel: ShellState.weatherDebugTime === modelData.key
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 24
+                                radius: 8
+                                color: timePillLg.isLiquidActive ? "transparent" : (timePill.isSel
+                                    ? Theme.glassSurfaceActive
+                                    : (timePillMouse.containsMouse ? Theme.glassSurfaceHover : "transparent"))
+                                border.width: (!timePillLg.isLiquidActive && timePill.isSel) ? 1 : 0
+                                border.color: timePill.isSel ? Theme.glassBorder : "transparent"
+                                scale: timePillMouse.pressed ? 0.94 : (timePillMouse.containsMouse ? 1.03 : 1.0)
+                                Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                                Behavior on color { ColorAnimation { duration: 110 } }
+
+                                LiquidGlassSurface {
+                                    id: timePillLg
+                                    anchors.fill: parent
+                                    z: -1
+                                    cornerRadius: 8
+                                    onlyWhenHighlighted: true
+                                    active: timePill.isSel
+                                    hovered: timePillMouse.containsMouse
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: timePill.modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: timePill.isSel ? Font.DemiBold : Font.Medium
+                                    color: timePill.isSel ? Theme.text : Theme.textDim
+                                }
+
+                                MouseArea {
+                                    id: timePillMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        ShellState.weatherDebugTime = timePill.modelData.key;
+                                        ShellState.weatherOpen = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Repeater {
                         model: root.weatherStates
 

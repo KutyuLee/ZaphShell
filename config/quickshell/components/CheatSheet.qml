@@ -164,6 +164,7 @@ IslandFloatPanel {
                             ShortcutRow { key: "SUPER + N"; desc: "Toggle Control Center" }
                             ShortcutRow { key: "SUPER + L"; desc: "Lock Screen" }
                             ShortcutRow { key: "SUPER+SHIFT+L"; desc: "Suspend / Sleep" }
+                            ShortcutRow { key: "SUPER+SHIFT+R"; desc: "Restart Shell" }
                         }
 
                         // 4. Window Actions & Sizing

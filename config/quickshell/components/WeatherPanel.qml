@@ -47,8 +47,9 @@ PanelWindow {
         if (d.includes("snow") || ic === "󰖘" || ic === "󰼶") return "#BAE6FD";
         if (d.includes("rain") || d.includes("drizzle") || d.includes("shower") || ic === "󰖗" || ic === "󰖖" || ic === "󰼳") return "#38BDF8";
         if (d.includes("fog") || ic === "󰖑") return "#99F6E4";
-        if (d.includes("partly") || d.includes("mostly") || ic === "󰖕") return "#FDE047";
-        if (d.includes("clear") || ic === "󰖙") return "#FBBF24";
+        if (ic === "󰖔" || ic === "󰼱") return "#C7D2FE";
+        if (d.indexOf("partly") !== -1 || d.indexOf("mostly") !== -1 || ic === "󰖕") return "#FDE047";
+        if (d.indexOf("clear") !== -1 || ic === "󰖙") return "#FBBF24";
         return "#F8FAFC";
     }
 

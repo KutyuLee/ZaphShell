@@ -182,6 +182,13 @@ IslandFloatPanel {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 2
+                            layer.enabled: ShellState.liquidGlassEnabled && !Theme.lightMode
+                            layer.effect: DropShadow {
+                                verticalOffset: 1
+                                radius: 4
+                                samples: 9
+                                color: Qt.rgba(0, 0, 0, 0.72)
+                            }
 
                             Text {
                                 Layout.fillWidth: true

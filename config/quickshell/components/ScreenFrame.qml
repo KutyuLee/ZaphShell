@@ -28,8 +28,21 @@ PanelWindow {
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
     exclusiveZone: 0
 
-    // 100% click-through so windows, bar widgets, and triggers work normally
-    mask: Region {}
+    // Click-through when idle; catches clicks outside open panels (including on other monitors) below the top bar
+    Item {
+        id: backdropDismissMask
+        x: 0
+        y: (ShellState.anyDismissiblePanelOpen && !ShellState.lockVisualOpen) ? Theme.barBottomY : 0
+        width: (ShellState.anyDismissiblePanelOpen && !ShellState.lockVisualOpen) ? root.width : 0
+        height: (ShellState.anyDismissiblePanelOpen && !ShellState.lockVisualOpen) ? Math.max(0, root.height - Theme.barBottomY) : 0
+    }
+    mask: Region { item: backdropDismissMask }
+
+    MouseArea {
+        anchors.fill: backdropDismissMask
+        enabled: ShellState.anyDismissiblePanelOpen && !ShellState.lockVisualOpen
+        onClicked: ShellState.closeAll()
+    }
 
     readonly property real w: root.width
     readonly property real h: root.height

@@ -44,18 +44,12 @@ Rectangle {
         if (!item) return;
         if (item.hasMenu && item.menu) {
             ShellState.activateMonitor(root.targetScreen);
-            if (ShellState.trayMenuOpen && ShellState.trayMenuSource === item.menu) {
-                ShellState.trayMenuOpen = false;
-                return;
-            }
-            ShellState.trayMenuSource = item.menu;
-            ShellState.trayMenuTitle = item.title || item.id || "";
             const pos = trayBox.mapToItem(null, 0, 0);
-            ShellState.trayMenuCenterX = pos.x + trayBox.width / 2;
+            const centerX = pos.x + trayBox.width / 2;
             const screenW = root.Window.window ? root.Window.window.width : 3440;
             const maxRight = screenW - Theme.barMarginX;
-            ShellState.trayMenuRightX = Math.min(maxRight, Math.max(ShellState.trayMenuTargetWidth + Theme.barMarginX, ShellState.trayMenuCenterX + ShellState.trayMenuTargetWidth / 2));
-            ShellState.trayMenuOpen = true;
+            const rightX = Math.min(maxRight, Math.max(ShellState.trayMenuTargetWidth + Theme.barMarginX, centerX + ShellState.trayMenuTargetWidth / 2));
+            ShellState.openOrSwitchTrayMenu(item.menu, item.title || item.id || "", centerX, rightX);
         } else {
             item.secondaryActivate();
         }

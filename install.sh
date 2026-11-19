@@ -65,7 +65,7 @@ if [ -z "$MODE" ]; then
 fi
 
 echo -e "${BOLD}====================================================${RESET}"
-echo -e "${BOLD}           ZaphShell Installer (v0.3.1.2)           ${RESET}"
+echo -e "${BOLD}           ZaphShell Installer (v0.3.2)           ${RESET}"
 echo -e "${BOLD}====================================================${RESET}\n"
 
 # ------------------------------------------------------------------------------
@@ -418,6 +418,7 @@ After=graphical-session.target
 
 [Service]
 ExecStart=${QS_BIN} --no-duplicate
+KillMode=process
 Restart=on-failure
 RestartSec=1
 

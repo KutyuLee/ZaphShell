@@ -5,9 +5,9 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.Notifications
-import Quickshell.Services.Pipewire
 import Quickshell.Services.Mpris
 import "."
+import "state"
 
 Item {
     id: root
@@ -19,7 +19,7 @@ Item {
     }
 
     // Dynamic Environment & Paths
-    readonly property string version: "0.3.1.2"
+    readonly property string version: "0.3.2"
     readonly property string userHome: Quickshell.env("HOME") || ""
     readonly property string configDir: userHome + "/.config/quickshell"
     readonly property string scriptsDir: configDir + "/scripts"
@@ -77,6 +77,7 @@ Item {
     property bool notifCenterOpen: false
     property bool sysMenuOpen: false
     property bool weatherOpen: false
+    property bool calendarOpen: false
     property bool trayMenuOpen: false
     property bool settingsOpen: false
     property int settingsTab: 0 // 0: General, 1: Scratchpads
@@ -110,6 +111,7 @@ Item {
     property bool showBatteryPercent: true
     property bool panelWavesEnabled: true
     property bool liquidGlassEnabled: true
+    property string glassExcludedApps: "virtualbox"
     property bool secondaryFullBar: true
     property bool showDebugButton: false
     property bool musicAppsOnlyOnIsland: true
@@ -231,97 +233,19 @@ Item {
     onSleepTimeoutMinChanged: scheduleSaveState()
     onLockOnScreenOffChanged: scheduleSaveState()
 
-    // 1. Wayland Idle Monitor: Screen Off (turns off monitor via DPMS when idle)
-    IdleMonitor {
-        id: screenOffIdleMonitor
-        timeout: Math.max(10, root.screenOffTimeoutMin * 60)
-        respectInhibitors: true
-        enabled: !root.awakeActive && root.screenOffTimeoutMin > 0
-
-        onIsIdleChanged: {
-            if (isIdle) {
-                root.isScreenOff = true;
-                if (root.lockOnScreenOff && !root.locked) {
-                    root.lockScreen();
-                }
-                Quickshell.execDetached([root.script("power-action.sh"), "dpms-off"]);
-            } else {
-                if (root.isScreenOff) {
-                    root.isScreenOff = false;
-                    Quickshell.execDetached([root.script("power-action.sh"), "dpms-on"]);
-                }
-            }
-        }
+    IdleMonitorManager {
+        id: idleMonitorMgr
+        shellState: root
     }
 
-    // 2. Wayland Idle Monitor: System Sleep / Suspend
-    IdleMonitor {
-        id: sleepIdleMonitor
-        timeout: Math.max(30, root.sleepTimeoutMin * 60)
-        respectInhibitors: true
-        enabled: !root.awakeActive && root.sleepTimeoutMin > 0
-
-        onIsIdleChanged: {
-            if (isIdle) {
-                if (!root.locked) {
-                    root.lockScreen();
-                }
-                Quickshell.execDetached([root.script("power-action.sh"), "suspend"]);
-            }
-        }
+    WallpaperSync {
+        id: wallpaperSync
+        shellState: root
     }
 
-    Process {
-        id: hyprpaperQueryProc
-        command: [root.script("wallpaper.sh"), "current", Theme.mainMonitorName]
-        stdout: SplitParser {
-            onRead: data => {
-                const p = String(data || "").trim();
-                if (p.length > 0 && p !== root.wallpaperPath) {
-                    root.wallpaperPath = p;
-                }
-            }
-        }
-    }
-
-    function syncWallpaperFromHyprpaper() {
-        hyprpaperQueryProc.running = false;
-        hyprpaperQueryProc.running = true;
-    }
-
-    Timer {
-        id: hyprpaperPollTimer
-        interval: 8000
-        repeat: true
-        running: !root.locked
-        triggeredOnStart: true
-        onTriggered: root.syncWallpaperFromHyprpaper()
-    }
-
-    Timer {
-        id: hyprpaperSyncTimer
-        interval: 50
-        repeat: false
-        property string pendingWall: ""
-        onTriggered: {
-            if (pendingWall && pendingWall.length > 0) {
-                Quickshell.execDetached([root.script("wallpaper.sh"), "set", pendingWall]);
-            }
-        }
-    }
-
-    function applyWallpaperWithFade(newPath) {
-        if (!newPath || newPath.length === 0) return;
-        root.wallpaperPath = newPath;
-        hyprpaperSyncTimer.pendingWall = newPath;
-        hyprpaperSyncTimer.restart();
-    }
-
-    function resetWallpaperToDefault() {
-        root.wallpaperPath = root.defaultWallpaperPath;
-        Quickshell.execDetached([root.script("wallpaper.sh"), "default"]);
-        Qt.callLater(syncWallpaperFromHyprpaper);
-    }
+    function syncWallpaperFromHyprpaper() { wallpaperSync.sync(); }
+    function applyWallpaperWithFade(newPath) { wallpaperSync.apply(newPath); }
+    function resetWallpaperToDefault() { wallpaperSync.resetToDefault(); }
 
     function setThemeMode(isLight) {
         if (root.liquidGlassEnabled && isLight) return;
@@ -359,6 +283,7 @@ Item {
                     if (typeof obj.showBatteryPercent === "boolean") root.showBatteryPercent = obj.showBatteryPercent;
                     if (typeof obj.panelWavesEnabled === "boolean") root.panelWavesEnabled = obj.panelWavesEnabled;
                     if (typeof obj.liquidGlassEnabled === "boolean") root.liquidGlassEnabled = obj.liquidGlassEnabled;
+                    if (typeof obj.glassExcludedApps === "string") root.glassExcludedApps = obj.glassExcludedApps;
                     if (root.liquidGlassEnabled && Theme.lightMode) {
                         Theme.lightMode = false;
                         Quickshell.execDetached([root.script("theme-mode.sh"), "dark"]);
@@ -409,6 +334,7 @@ Item {
                 showBatteryPercent: root.showBatteryPercent,
                 panelWavesEnabled: root.panelWavesEnabled,
                 liquidGlassEnabled: root.liquidGlassEnabled,
+                glassExcludedApps: root.glassExcludedApps,
                 secondaryFullBar: root.secondaryFullBar,
                 showDebugButton: root.showDebugButton,
                 musicAppsOnlyOnIsland: root.musicAppsOnlyOnIsland,
@@ -447,6 +373,7 @@ Item {
         root.showBatteryPercent = true;
         root.panelWavesEnabled = true;
         root.liquidGlassEnabled = true;
+        root.glassExcludedApps = "virtualbox";
         root.secondaryFullBar = true;
         root.showDebugButton = false;
         root.musicAppsOnlyOnIsland = true;
@@ -484,7 +411,24 @@ Item {
         }
         scheduleSaveState();
     }
-    onSecondaryFullBarChanged: scheduleSaveState()
+    onGlassExcludedAppsChanged: scheduleSaveState()
+
+    function isGlassExcludedApp(appId) {
+        const id = String(appId || "").trim().toLowerCase();
+        if (id.length === 0) return false;
+        const parts = String(root.glassExcludedApps || "").split(",");
+        for (let i = 0; i < parts.length; ++i) {
+            const token = parts[i].trim().toLowerCase();
+            if (token.length > 0 && id.indexOf(token) !== -1) return true;
+        }
+        return false;
+    }
+    onSecondaryFullBarChanged: {
+        if (!secondaryFullBar) {
+            activateMonitor(resolvedMainScreenName());
+        }
+        scheduleSaveState();
+    }
     onShowDebugButtonChanged: scheduleSaveState()
     onMusicAppsOnlyOnIslandChanged: scheduleSaveState()
     onAnnounceMediaChangesChanged: scheduleSaveState()
@@ -506,7 +450,7 @@ Item {
 
     Component.onCompleted: {
         stateLoadProc.running = true;
-        weatherFetchProc.running = true;
+        weatherService.fetch(false);
         kbLayoutInitProc.running = true;
         syncHyprlandWindowGaps();
     }
@@ -520,22 +464,39 @@ Item {
     property string weatherWind: "-- km/h"
     property string rawWeatherIcon: "󰖐"
     property string rawWeatherDesc: "Loading..."
+    property bool weatherIsDay: {
+        const h = new Date().getHours();
+        return h >= 6 && h < 20;
+    }
     property string weatherDebugMode: ""
+    property string weatherDebugTime: "" // "" (auto) | "day" | "night"
+    readonly property bool isWeatherNight: weatherDebugTime === "night"
+        ? true
+        : (weatherDebugTime === "day" ? false : !weatherIsDay)
     readonly property string weatherIcon: {
         switch (weatherDebugMode) {
-            case "clear": return "󰖙";
-            case "partlyCloudy": return "󰖕";
+            case "clear": return isWeatherNight ? "󰖔" : "󰖙";
+            case "partlyCloudy": return isWeatherNight ? "󰼱" : "󰖕";
             case "cloudy": return "󰖐";
             case "rain": return "󰖗";
             case "storm": return "󰖓";
             case "snow": return "󰖘";
             case "fog": return "󰖑";
-            default: return rawWeatherIcon;
+            default: {
+                if (weatherDebugTime === "night") {
+                    if (rawWeatherIcon === "󰖙") return "󰖔";
+                    if (rawWeatherIcon === "󰖕") return "󰼱";
+                } else if (weatherDebugTime === "day") {
+                    if (rawWeatherIcon === "󰖔") return "󰖙";
+                    if (rawWeatherIcon === "󰼱") return "󰖕";
+                }
+                return rawWeatherIcon;
+            }
         }
     }
     readonly property string weatherDesc: {
         switch (weatherDebugMode) {
-            case "clear": return "Clear Sky";
+            case "clear": return isWeatherNight ? "Clear Night" : "Clear Sky";
             case "partlyCloudy": return "Partly Cloudy";
             case "cloudy": return "Cloudy";
             case "rain": return "Rain";
@@ -561,7 +522,7 @@ Item {
     property bool weatherDebugOpen: false
     property real weatherDebugCenterX: 300
     readonly property real weatherDebugTargetWidth: 184
-    readonly property real weatherDebugTargetHeight: 304
+    readonly property real weatherDebugTargetHeight: 336
     property real weatherDebugWidth: 44
     property real weatherDebugHeight: 0
     property real smoothWeatherDebugHeight: weatherDebugOpen ? weatherDebugTargetHeight : 0
@@ -620,49 +581,13 @@ Item {
         weatherOpen = true;
     }
 
-    Process {
-        id: weatherFetchProc
-        command: root.weatherForceRefresh
-            ? [root.script("weather.sh"), "--force"]
-            : [root.script("weather.sh")]
-        stdout: SplitParser {
-            onRead: data => {
-                try {
-                    const obj = JSON.parse(data.trim());
-                    if (obj.city) root.weatherCity = obj.city;
-                    if (obj.temp) root.weatherTemp = obj.temp;
-                    if (obj.tempShort) root.weatherTempShort = obj.tempShort;
-                    if (obj.feelsLike) root.weatherFeelsLike = obj.feelsLike;
-                    if (obj.humidity) root.weatherHumidity = obj.humidity;
-                    if (obj.wind) root.weatherWind = obj.wind;
-                    if (obj.icon) root.rawWeatherIcon = obj.icon;
-                    if (obj.desc) root.rawWeatherDesc = obj.desc;
-                    if (obj.high) root.weatherHigh = obj.high;
-                    if (obj.low) root.weatherLow = obj.low;
-                    if (Array.isArray(obj.hourly) && obj.hourly.length > 0) root.weatherHourly = obj.hourly;
-                    if (Array.isArray(obj.forecast)) root.weatherForecast = obj.forecast;
-                } catch (e) {}
-                root.weatherForceRefresh = false;
-            }
-        }
-    }
-
-    Timer {
-        id: weatherPeriodicTimer
-        interval: 600000 // Refresh every 10 minutes
-        running: true
-        repeat: true
-        onTriggered: {
-            root.weatherForceRefresh = false;
-            weatherFetchProc.running = false;
-            weatherFetchProc.running = true;
-        }
+    WeatherService {
+        id: weatherService
+        shellState: root
     }
 
     function refreshWeather() {
-        root.weatherForceRefresh = true;
-        weatherFetchProc.running = false;
-        weatherFetchProc.running = true;
+        weatherService.fetch(true);
     }
 
     readonly property real targetCcHeight: {
@@ -721,6 +646,7 @@ Item {
     property real trayMenuCenterX: 3000
     property var trayMenuSource: null
     property string trayMenuTitle: ""
+    property int traySwitchSeq: 0
 
     // Standalone Power Menu OSD dimensions (Right edge extrusion)
     property real powerOsdWidth: 0
@@ -1438,21 +1364,36 @@ Item {
         return (entry && entry[kind] !== undefined) ? entry[kind] : fallbackVal;
     }
 
+    readonly property bool anyDismissiblePanelOpen: sysMenuOpen || weatherOpen || calendarOpen || weatherDebugOpen || notifCenterOpen
+        || trayMenuOpen || controlCenterOpen || launcherOpen || clipboardOpen
+        || settingsOpen || cheatSheetOpen || powerOsdOpen
+
     function hasAnyPanelOpen() {
-        return root.sysMenuOpen || root.weatherOpen || root.weatherDebugOpen || root.notifCenterOpen
-            || root.trayMenuOpen || root.controlCenterOpen || root.launcherOpen || root.clipboardOpen
-            || root.settingsOpen || root.cheatSheetOpen || root.powerOsdOpen;
+        return anyDismissiblePanelOpen;
+    }
+
+    function resolvedMainScreenName() {
+        const screens = Quickshell.screens;
+        if (!screens || screens.length === 0) return Theme.mainMonitorName;
+        for (let i = 0; i < screens.length; ++i) {
+            if (screens[i] && screens[i].name === Theme.mainMonitorName) return Theme.mainMonitorName;
+        }
+        return String(screens[0].name || Theme.mainMonitorName);
     }
 
     function activateMonitor(screenOrName) {
-        const name = (typeof screenOrName === "string")
+        let name = (typeof screenOrName === "string")
             ? screenOrName
             : ((screenOrName && screenOrName.name) ? String(screenOrName.name) : "");
+        if (!root.secondaryFullBar) {
+            name = resolvedMainScreenName();
+        }
         if (!name || name === root.activeMonitorName) return;
 
         // Close any open panel on the old monitor before handing ownership to the clicked/focused display
         root.sysMenuOpen = false;
         root.weatherOpen = false;
+        root.calendarOpen = false;
         root.weatherDebugOpen = false;
         root.notifCenterOpen = false;
         root.trayMenuOpen = false;
@@ -1770,6 +1711,7 @@ Item {
     }
 
     function modalDestY(mode) {
+        if (mode === "launcher" || mode === "clipboard") return Theme.barTopGap;
         const h = modalDestHeight(mode);
         return Math.max(Theme.barBottomY + 18, Math.round((mainScreenHeight - h) / 2));
     }
@@ -2220,10 +2162,11 @@ Item {
     onTargetCenterIslandYChanged: triggerCenterIslandMorph()
     onTargetCenterIslandRadiusChanged: rawCenterIslandRadius = targetCenterIslandRadius
 
-    // 3. Right Island (Tray + Weather + Battery + Clock + Bell -> morphs into Notification Center / Weather with universal Dynamic Island curves)
+    // 3. Right Island (Tray + Weather + Battery + Clock + Bell -> morphs into Notification Center / Weather / Calendar with universal Dynamic Island curves)
     readonly property string rightIslandMode: {
         if (notifCenterOpen) return "notifCenter";
         if (weatherOpen) return "weather";
+        if (calendarOpen) return "calendar";
         return "collapsed";
     }
     property string rightIslandOwner: "none"
@@ -2236,16 +2179,20 @@ Item {
 
     readonly property real targetNotifCenterWidth: Math.max(Theme.notifCenterWidth, rightIslandBaseWidth + 16)
     readonly property real targetWeatherWidth: Math.max(Theme.weatherCardWidth, rightIslandBaseWidth + 16)
+    readonly property real targetCalendarWidth: Math.max(304, rightIslandBaseWidth + 16)
+    readonly property real calendarHeight: 280
 
     readonly property real targetRightIslandWidth: {
         if (rightIslandMode === "notifCenter") return targetNotifCenterWidth;
         if (rightIslandMode === "weather") return targetWeatherWidth;
+        if (rightIslandMode === "calendar") return targetCalendarWidth;
         return rightIslandBaseWidth;
     }
 
     readonly property real targetRightIslandHeight: {
         if (rightIslandMode === "notifCenter") return Theme.barHeight + targetNotifCenterHeight;
         if (rightIslandMode === "weather") return Theme.barHeight + Theme.weatherMaxHeight;
+        if (rightIslandMode === "calendar") return Theme.barHeight + calendarHeight;
         return Theme.barHeight;
     }
 
@@ -2758,6 +2705,23 @@ Item {
         }
     }
 
+    function openOrSwitchTrayMenu(menu, title, centerX, rightX) {
+        if (!menu) return;
+        if (trayMenuOpen && trayMenuSource === menu) {
+            trayMenuOpen = false;
+            return;
+        }
+        trayMenuSource = menu;
+        trayMenuTitle = title;
+        trayMenuCenterX = centerX;
+        trayMenuRightX = rightX;
+        if (trayMenuOpen) {
+            traySwitchSeq++;
+        } else {
+            trayMenuOpen = true;
+        }
+    }
+
     ParallelAnimation {
         id: trayResizeAnim
         alwaysRunToEnd: false
@@ -2933,6 +2897,7 @@ Item {
             notifCenterOpen = false;
             sysMenuOpen = false;
             weatherOpen = false;
+            calendarOpen = false;
             trayMenuOpen = false;
             powerOsdOpen = false;
             volumeOsdOpen = false;
@@ -2948,6 +2913,7 @@ Item {
             notifCenterOpen = false;
             sysMenuOpen = false;
             weatherOpen = false;
+            calendarOpen = false;
             trayMenuOpen = false;
             powerOsdOpen = false;
         }
@@ -2962,6 +2928,7 @@ Item {
             notifCenterOpen = false;
             sysMenuOpen = false;
             weatherOpen = false;
+            calendarOpen = false;
             trayMenuOpen = false;
             powerOsdOpen = false;
         }
@@ -2979,6 +2946,7 @@ Item {
             root.notifCenterOpen = false;
             root.notifOpen = false;
             root.weatherOpen = false;
+            root.calendarOpen = false;
             root.sysMenuOpen = false;
             root.trayMenuOpen = false;
             ccCloseAnim.stop();
@@ -3008,6 +2976,7 @@ Item {
             root.notifWidth = 0;
             root.controlCenterOpen = false;
             root.weatherOpen = false;
+            root.calendarOpen = false;
             root.sysMenuOpen = false;
             root.trayMenuOpen = false;
             root.launcherOpen = false;
@@ -3050,6 +3019,7 @@ Item {
             controlCenterOpen = false;
             notifCenterOpen = false;
             weatherOpen = false;
+            calendarOpen = false;
             trayMenuOpen = false;
         }
         triggerLeftIslandMorph();
@@ -3061,8 +3031,24 @@ Item {
             launcherOpen = false;
             controlCenterOpen = false;
             notifCenterOpen = false;
+            calendarOpen = false;
             sysMenuOpen = false;
             trayMenuOpen = false;
+        }
+        triggerRightIslandMorph();
+    }
+
+    onCalendarOpenChanged: {
+        if (calendarOpen) {
+            root.rightIslandOwner = "calendar";
+            launcherOpen = false;
+            controlCenterOpen = false;
+            notifCenterOpen = false;
+            weatherOpen = false;
+            sysMenuOpen = false;
+            trayMenuOpen = false;
+            settingsOpen = false;
+            cheatSheetOpen = false;
         }
         triggerRightIslandMorph();
     }
@@ -3074,6 +3060,7 @@ Item {
             notifCenterOpen = false;
             sysMenuOpen = false;
             weatherOpen = false;
+            calendarOpen = false;
             settingsOpen = false;
             cheatSheetOpen = false;
             powerOsdOpen = false;
@@ -3183,7 +3170,24 @@ Item {
             sysMenuOpen = false;
             launcherOpen = false;
             controlCenterOpen = false;
-        notifCenterOpen = false;
+            notifCenterOpen = false;
+            calendarOpen = false;
+            trayMenuOpen = false;
+            settingsOpen = false;
+            cheatSheetOpen = false;
+        }
+    }
+
+    function toggleCalendar() {
+        if (root.locked) return;
+        if (!calendarOpen) activateFocusedMonitorIfIdle();
+        calendarOpen = !calendarOpen;
+        if (calendarOpen) {
+            sysMenuOpen = false;
+            launcherOpen = false;
+            controlCenterOpen = false;
+            notifCenterOpen = false;
+            weatherOpen = false;
             trayMenuOpen = false;
             settingsOpen = false;
             cheatSheetOpen = false;
@@ -3323,6 +3327,7 @@ Item {
     function closeAll() {
         sysMenuOpen = false;
         weatherOpen = false;
+        calendarOpen = false;
         trayMenuOpen = false;
         launcherOpen = false;
         controlCenterOpen = false;
@@ -3351,48 +3356,8 @@ Item {
         root.lockVisualOpen = false;
     }
 
-    // PipeWire Sink Tracking for Volume Adjustments
-    PwObjectTracker {
-        objects: [Pipewire.defaultAudioSink]
-    }
-
-    property real lastKnownVolume: -1
-    property bool lastKnownMuted: false
-    property bool volumeTrackerInitialized: false
-
-    Timer {
-        interval: 1000
-        running: true
-        repeat: false
-        onTriggered: {
-            const sink = Pipewire.defaultAudioSink;
-            if (sink && sink.audio) {
-                root.lastKnownVolume = sink.audio.volume;
-                root.lastKnownMuted = sink.audio.muted;
-            }
-            root.volumeTrackerInitialized = true;
-        }
-    }
-
-    Connections {
-        target: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
-        function onVolumeChanged() {
-            if (!root.volumeTrackerInitialized) return;
-            const sink = Pipewire.defaultAudioSink;
-            if (sink && sink.audio) {
-                if (Math.abs(sink.audio.volume - root.lastKnownVolume) > 0.005) {
-                    root.lastKnownVolume = sink.audio.volume;
-                    root.triggerVolumeOsd();
-                }
-            }
-        }
-        function onMutedChanged() {
-            if (!root.volumeTrackerInitialized) return;
-            const sink = Pipewire.defaultAudioSink;
-            if (sink && sink.audio) {
-                root.lastKnownMuted = sink.audio.muted;
-                root.triggerVolumeOsd();
-            }
-        }
+    VolumeMonitor {
+        id: volumeMonitor
+        shellState: root
     }
 }

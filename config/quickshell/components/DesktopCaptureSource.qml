@@ -25,6 +25,14 @@ Item {
         if (root.active) root.triggerSettle();
     }
 
+    Connections {
+        target: ShellState
+        function onGlassExcludedAppsChanged() {
+            root.syncWinModel();
+            if (root.active) root.triggerSettle();
+        }
+    }
+
     ListModel {
         id: winModel
     }
@@ -35,7 +43,9 @@ Item {
             root.waylandByKey = ({});
             return;
         }
-        const wins = root.captureWindows || [];
+        const wins = (root.captureWindows || []).filter(function(w) {
+            return !ShellState.isGlassExcludedApp(w && w.wayland && w.wayland.appId);
+        });
         const nextMap = {};
         const keepSet = {};
         for (let i = 0; i < wins.length; ++i) {

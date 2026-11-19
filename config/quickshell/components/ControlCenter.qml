@@ -407,6 +407,9 @@ PanelWindow {
             + netSubTrans.x * 1.71
             + btSubTrans.x * 1.93
             + audioSubTrans.x * 2.11
+            + netSubListView.contentY * 1.03
+            + btSubListView.contentY * 1.07
+            + audioSubListView.contentY * 1.09
             + mediaTabView.slideX * 2.33
             + activeTab * 11.0
             + scrollTick

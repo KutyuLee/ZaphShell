@@ -7,10 +7,45 @@ import ".."
 Rectangle {
     id: root
 
-    implicitHeight: 20
-    implicitWidth: clockRow.implicitWidth
-    color: "transparent"
+    property var targetScreen: null
+    property bool ownsActivePanel: false
+
+    readonly property bool isPillHighlighted: (root.ownsActivePanel && ShellState.calendarOpen) || clockMouse.containsMouse
+
+    implicitHeight: 24
+    implicitWidth: clockRow.implicitWidth + 14
+    radius: height / 2
+    color: clockLg.isLiquidActive
+        ? "transparent"
+        : ((root.ownsActivePanel && ShellState.calendarOpen)
+            ? Theme.glassSurfaceActive
+            : (clockMouse.containsMouse ? Theme.glassSurfaceHover : "transparent"))
     border.width: 0
+
+    LiquidGlassSurface {
+        id: clockLg
+        anchors.fill: parent
+        z: -2
+        cornerRadius: parent.height / 2
+        onlyWhenHighlighted: true
+        hovered: clockMouse.containsMouse
+        active: root.ownsActivePanel && ShellState.calendarOpen
+    }
+
+    scale: clockMouse.pressed ? 0.94 : (clockMouse.containsMouse ? 1.03 : 1.0)
+    Behavior on scale { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
+    Behavior on color { ColorAnimation { duration: 130 } }
+
+    MouseArea {
+        id: clockMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: {
+            ShellState.activateMonitor(root.targetScreen);
+            ShellState.toggleCalendar();
+        }
+    }
 
     SystemClock {
         id: sysClock
